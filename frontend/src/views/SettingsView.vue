@@ -9,6 +9,7 @@
       <v-tab value="users">Nhân viên</v-tab>
       <v-tab value="teams">Đội nhóm</v-tab>
       <v-tab value="org">Tổ chức</v-tab>
+      <v-tab value="system">Hệ thống</v-tab>
     </v-tabs>
 
     <v-window v-model="tab">
@@ -124,6 +125,83 @@
       <v-window-item value="org">
         <OrgSettings />
       </v-window-item>
+
+      <!-- Tab 4: System settings -->
+      <v-window-item value="system">
+        <v-card class="pa-4">
+          <div class="d-flex align-center mb-4">
+            <v-icon color="primary" class="mr-2">mdi-update</v-icon>
+            <h3 class="text-h6">Cập nhật hệ thống</h3>
+          </div>
+
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-list border>
+                <v-list-item>
+                  <template #prepend>
+                    <v-icon color="grey">mdi-source-branch</v-icon>
+                  </template>
+                  <v-list-item-title>Phiên bản hiện tại</v-list-item-title>
+                  <v-list-item-subtitle v-if="sysLoading">Đang tải...</v-list-item-subtitle>
+                  <v-list-item-subtitle v-else>{{ systemVersion?.version || '1.0.0' }} ({{ systemVersion?.commit || 'n/a' }})</v-list-item-subtitle>
+                </v-list-item>
+                <v-list-item>
+                  <template #prepend>
+                    <v-icon color="grey">mdi-calendar-clock</v-icon>
+                  </template>
+                  <v-list-item-title>Ngày cập nhật</v-list-item-title>
+                  <v-list-item-subtitle v-if="sysLoading">Đang tải...</v-list-item-subtitle>
+                  <v-list-item-subtitle v-else>{{ systemVersion?.date || 'n/a' }}</v-list-item-subtitle>
+                </v-list-item>
+              </v-list>
+            </v-col>
+
+            <v-col cols="12" md="6">
+              <p class="text-body-2 mb-4 text-grey">
+                Nhấn nút bên dưới để kiểm tra và tải về phiên bản mới nhất từ Git. 
+                Quá trình này sẽ thực hiện lệnh <code class="bg-grey-darken-3 px-1">git pull</code> trên server.
+              </p>
+              
+              <v-btn
+                color="primary"
+                prepend-icon="mdi-git"
+                :loading="sysUpdating"
+                :disabled="!authStore.isOwner"
+                @click="handleSystemUpdate"
+              >
+                Cập nhật từ Git
+              </v-btn>
+
+              <div v-if="!authStore.isOwner" class="text-caption text-error mt-2">
+                Chỉ Chủ sở hữu mới có quyền cập nhật hệ thống.
+              </div>
+            </v-col>
+          </v-row>
+
+          <v-expand-transition>
+            <div v-if="sysUpdateResult" class="mt-4">
+              <v-alert
+                :type="sysUpdateResult.message.includes('thành công') ? 'success' : 'info'"
+                variant="tonal"
+                class="mb-2"
+              >
+                {{ sysUpdateResult.message }}
+              </v-alert>
+              <v-expansion-panels>
+                <v-expansion-panel title="Chi tiết nhật ký (Log)">
+                  <v-expansion-panel-text>
+                    <pre class="bg-black pa-2 text-caption" style="overflow-x: auto;">{{ sysUpdateResult.output }}</pre>
+                  </v-expansion-panel-text>
+                </v-expansion-panel>
+              </v-expansion-panels>
+            </div>
+          </v-expand-transition>
+
+          <v-alert v-if="sysError" type="error" variant="tonal" class="mt-4">
+            {{ sysError }}
+          </v-alert>
+        </v-card>
+      </v-window-item>
     </v-window>
   </div>
 </template>
@@ -134,9 +212,19 @@ import { useUsers, type OrgUser } from '@/composables/use-users';
 import { useAuthStore } from '@/stores/auth';
 import TeamManagement from '@/components/settings/TeamManagement.vue';
 import OrgSettings from '@/components/settings/OrgSettings.vue';
+import { useSystem } from '@/composables/use-system';
 
 const { users, loading, error, fetchUsers, createUser, updateUser, resetPassword, deleteUser } = useUsers();
 const authStore = useAuthStore();
+const {
+  version: systemVersion,
+  loading: sysLoading,
+  updating: sysUpdating,
+  error: sysError,
+  updateResult: sysUpdateResult,
+  fetchVersion,
+  updateSystem
+} = useSystem();
 
 const tab = ref('users');
 const showCreate = ref(false);
@@ -234,5 +322,12 @@ async function handleDelete() {
   if (res.ok) { showDelete.value = false; }
 }
 
-onMounted(fetchUsers);
+async function handleSystemUpdate() {
+  await updateSystem();
+}
+
+onMounted(() => {
+  fetchUsers();
+  fetchVersion();
+});
 </script>
