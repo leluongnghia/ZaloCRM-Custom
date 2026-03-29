@@ -19,6 +19,8 @@ services:
         condition: service_healthy
     volumes:
       - file_storage:/var/lib/zalo-crm/files
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/www/quanly.khacdaunhanh.vn:/var/www/quanly.khacdaunhanh.vn
     tmpfs:
       - /tmp
     security_opt:

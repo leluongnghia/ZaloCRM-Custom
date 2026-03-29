@@ -27,23 +27,41 @@ export async function systemRoutes(app: FastifyInstance): Promise<void> {
       logger.info(`System update requested by ${user.email}`);
 
       try {
-        // Run git pull from the parent directory (root of the repo)
-        const { stdout, stderr } = await execPromise('git pull', {
-          cwd: process.cwd().includes('backend') ? '..' : '.',
-        });
+        const targetPath = '/var/www/quanly.khacdaunhanh.vn';
 
+        // Add to safe directory to avoid dubious ownership errors
+        await execPromise(`git config --global --add safe.directory ${targetPath}`).catch(() => {});
+
+        // Pull latest code
+        const { stdout, stderr } = await execPromise('git stash && git pull', { cwd: targetPath });
         logger.info('Git pull output:', stdout);
         if (stderr) logger.warn('Git pull warnings:', stderr);
 
-        // Check if there was any update
-        const isUpToDate = stdout.includes('Already up to date');
+        const isUpToDate = stdout.includes('Already up to date') || stdout.includes('up-to-date');
+        
+        // If there's an update, start a background rebuild
+        if (!isUpToDate) {
+           setTimeout(() => {
+             logger.info('Starting docker rebuild in background...');
+             exec('docker compose build --no-cache && docker compose up -d', { cwd: targetPath }, (err: any, out: string, errOut: string) => {
+               if (err) logger.error('Docker rebuild failed', err);
+               else logger.info('Docker rebuild success', out);
+             });
+           }, 2000);
+           
+           return {
+             ok: true,
+             message: 'Cập nhật thành công. Đang xây dựng lại (build) ở chế độ nền, hệ thống sẽ tự động khởi động lại sau khoảng 1-2 phút.',
+             needsRestart: true,
+           };
+        }
 
         return {
           ok: true,
-          output: stdout,
-          message: isUpToDate ? 'Hệ thống đã ở phiên bản mới nhất' : 'Cập nhật thành công. Vui lòng khởi động lại hệ thống để áp dụng.',
-          needsRestart: !isUpToDate,
+          message: 'Hệ thống đã ở phiên bản mới nhất.',
+          needsRestart: false,
         };
+
       } catch (error: any) {
         logger.error('Git update failed:', error.message);
         return reply.status(500).send({
