@@ -56,8 +56,9 @@ async function bootstrap() {
   });
 
   await app.register(rateLimit, {
-    max: 500,
+    max: 1000,
     timeWindow: '1 minute',
+    allowList: (req) => !req.url.startsWith('/api/'), // Chỉ giới hạn API, không giới hạn file tĩnh
   });
 
   // Serve compiled frontend assets in production
