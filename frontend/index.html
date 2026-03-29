@@ -4,9 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Zalo CRM - Liquid Silion</title>
+    <style>
+      :root {
+        --navy-deep: #0A192F;
+        --navy-light: #112240;
+      }
+      body {
+        margin: 0;
+        background: #0A192F;
+        overflow: hidden;
+      }
+      #app {
+        min-height: 100vh;
+      }
+      /* Fast placeholder for liquid bg avoid white flash */
+      .pre-liquid {
+        background: linear-gradient(-45deg, #0A192F, #112240, #004d7a, #008fb3);
+        background-size: 400% 400%;
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+      }
+    </style>
   </head>
-  <body>
+  <body class="pre-liquid">
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
