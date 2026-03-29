@@ -1,86 +1,104 @@
-# ZaloCRM — Quản lý nhiều tài khoản Zalo cá nhân
+# 🚀 ZaloCRM — Giải pháp Quản lý Zalo Cá nhân Tập trung
 
-Hệ thống quản lý tập trung nhiều tài khoản Zalo cá nhân trên 1 giao diện web. Chat real-time, quản lý khách hàng, lịch hẹn, báo cáo, API & Webhook.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-v20-green.svg)](https://nodejs.org/)
+[![Vue.js](https://img.shields.io/badge/Vue.js-v3-4fc08d.svg)](https://vuejs.org/)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue.svg)](https://www.docker.com/)
 
-## Tính năng
+**ZaloCRM** là hệ thống quản lý tập trung nhiều tài khoản Zalo cá nhân trên một giao diện web duy nhất. Giải pháp hoàn hảo cho các đội ngũ bán hàng, chăm sóc khách hàng muốn tối ưu hóa tương tác dữ liệu Zalo vào quy trình CRM chuyên nghiệp.
 
-- **Quản lý nhiều Zalo** — Đăng nhập QR, tự kết nối lại, lưu phiên đăng nhập
-- **Chat real-time** — Gửi/nhận tin nhắn, ảnh, file, sticker, nhóm chat
-- **Quản lý khách hàng** — Pipeline (Mới → Đã liên hệ → Quan tâm → Chuyển đổi → Mất)
-- **Lịch hẹn** — Tạo, theo dõi, nhắc nhở tự động hàng ngày
-- **Dashboard** — Biểu đồ tin nhắn, KPI, nguồn khách hàng, trạng thái pipeline
-- **Báo cáo** — Xuất Excel, lọc theo thời gian
-- **Phân quyền** — Owner / Admin / Member, quản lý đội nhóm, phân quyền Zalo
-- **API công khai** — REST API với xác thực API key cho tích hợp bên ngoài
-- **Webhook** — Nhận thông báo khi có tin nhắn mới, khách hàng mới, Zalo kết nối/ngắt
-- **Chống block Zalo** — Giới hạn 200 tin/ngày, phát hiện gửi quá nhanh
-- **Thông báo** — Tin chưa trả lời >30 phút, lịch hẹn sắp tới, Zalo mất kết nối
-- **Tìm kiếm toàn hệ thống** — Tìm khách hàng, tin nhắn, lịch hẹn
-- **Giao diện** — Theme tối/sáng, thiết kế Liquid Silicon
+---
 
-## Yêu cầu hệ thống
+## ✨ Tính năng nổi bật
 
-| Thành phần | Tối thiểu | Khuyến nghị |
-|-----------|----------|------------|
-| CPU | 1 vCPU | 2-4 vCPU |
-| RAM | 1 GB | 4 GB |
-| Ổ cứng | 10 GB | 20 GB SSD |
-| Hệ điều hành | Ubuntu 20.04+ | Ubuntu 22.04 LTS |
-| Phần mềm | Docker + Docker Compose | Docker 24+ |
+### 📱 Quản lý Đa tài khoản Zalo
+*   **Kết nối QR nhanh chóng:** Đăng nhập nhiều tài khoản bằng mã QR, tự động lưu phiên và kết nối lại.
+*   **Phân quyền chi tiết:** Gán quyền truy cập từng tài khoản Zalo cho nhân viên cụ thể (Xem, Chat, Quản lý).
 
-## Cài đặt nhanh
+### 💬 Trải nghiệm Chat Real-time
+*   **Đa phương tiện:** Hỗ trợ gửi/nhận văn bản, hình ảnh, file (PDF, Docs), sticker và tin nhắn nhóm.
+*   **Trả lời nhanh:** Tích hợp bộ lọc cuộc hội thoại, ghim khách hàng quan trọng.
 
-> Hướng dẫn chi tiết: [HUONG-DAN-CAI-DAT.md](HUONG-DAN-CAI-DAT.md)
+### 📊 CRM & Quản lý Khách hàng
+*   **Pipeline chuyên nghiệp:** Quản lý quy trình bán hàng (*Mới → Đã liên hệ → Quan tâm → Chuyển đổi → Mất*).
+*   **Hồ sơ khách hàng:** Lưu trữ thông tin (SĐT, Email, Nguồn, Tags) ngay trong giao diện chat.
+*   **Lịch hẹn thông minh:** Tạo lịch nhắc hẹn, tự động gửi thông báo nhắc nhở hàng ngày.
 
+### 🛠️ Hệ thống & Tích hợp
+*   **Cập nhật tự động:** Tính năng cập nhật trực tiếp từ Git ngay trên giao diện (mới).
+*   **Public API & Webhook:** Dễ dàng kết nối với Website, Landing Page hoặc hệ thống nội bộ khác.
+*   **Chống Block:** Cơ chế giới hạn tin nhắn và phát hiện gửi nhanh để bảo vệ tài khoản Zalo.
+
+---
+
+## 🛠️ Công nghệ sử dụng
+
+| Thành phần        | Công nghệ                                      |
+| ----------------- | ---------------------------------------------- |
+| **Backend**       | Node.js 20 / Fastify 5 / Prisma 7 / Socket.IO |
+| **Frontend**      | Vue 3 / Vuetify 3 / Pinia / Vite               |
+| **Database**      | PostgreSQL 16                                  |
+| **Kỹ thuật Zalo** | zca-js 2.x                                     |
+| **Triển khai**    | Docker / Docker Compose                        |
+
+---
+
+## 🚀 Cài đặt nhanh (Docker)
+
+Cách nhanh nhất để triển khai trên máy cá nhân hoặc VPS:
+
+1.  **Tải mã nguồn:**
+    ```bash
+    git clone https://github.com/leluongnghia/ZaloCRM-Custom.git
+    cd ZaloCRM-Custom
+    ```
+
+2.  **Cấu hình:**
+    ```bash
+    cp .env.example .env
+    # Mở file .env để sửa DB_PASSWORD và các Secret Keys
+    ```
+
+3.  **Khởi chạy:**
+    ```bash
+    docker compose up -d --build
+    ```
+
+4.  **Truy cập:** `http://localhost:3080` (Tạo tài khoản admin trong lần đầu truy cập).
+
+---
+
+## 🖥️ Cài đặt thủ công (Manual)
+
+Dành cho môi trường phát triển (Development):
+
+### Backend
 ```bash
-git clone https://github.com/vuongnguyenbinh/ZaloCRM.git
-cd ZaloCRM
-cp .env.example .env
-# Sửa file .env — đặt mật khẩu và secret keys
-docker compose up -d --build
+cd backend
+npm install
+npx prisma db push
+npm run dev
 ```
 
-Truy cập **http://IP-server:3080** → Tạo tài khoản admin lần đầu.
-
-## Công nghệ sử dụng
-
-| Thành phần | Công nghệ |
-|-----------|----------|
-| Backend | Node.js 20 / Fastify 5 / Prisma 7 |
-| Frontend | Vue 3 / Vuetify 3 / Chart.js / Pinia |
-| Cơ sở dữ liệu | PostgreSQL 16 |
-| Real-time | Socket.IO |
-| Zalo | zca-js 2.x |
-| Triển khai | Docker Compose |
-
-## API & Webhook
-
-> Hướng dẫn chi tiết: [HUONG-DAN-SU-DUNG.md](HUONG-DAN-SU-DUNG.md)
-
-### Xác thực API
-```
-Header: X-API-Key: your-api-key
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
 ```
 
-### Endpoint chính
+---
 
-| Phương thức | Đường dẫn | Mô tả |
-|------------|----------|-------|
-| GET | `/api/public/contacts` | Danh sách khách hàng |
-| POST | `/api/public/contacts` | Tạo khách hàng mới |
-| POST | `/api/public/messages/send` | Gửi tin nhắn |
-| GET | `/api/public/appointments` | Danh sách lịch hẹn |
+## 📖 Tài liệu liên quan
 
-### Sự kiện Webhook
+*   [Hướng dẫn Cài đặt Chi tiết](HUONG-DAN-CAI-DAT.md)
+*   [Hướng dẫn Sử dụng Hệ thống](HUONG-DAN-SU-DUNG.md)
 
-| Sự kiện | Mô tả |
-|---------|-------|
-| `message.received` | Tin nhắn mới đến |
-| `message.sent` | Tin nhắn gửi đi |
-| `contact.created` | Khách hàng mới |
-| `zalo.connected` | Zalo kết nối |
-| `zalo.disconnected` | Zalo mất kết nối |
+---
 
-## Giấy phép
+## 📄 Giấy phép
 
-MIT — Miễn phí sử dụng và chỉnh sửa.
+Dự án được phát hành dưới giấy phép **MIT**. Bạn hoàn toàn có quyền sử dụng, sửa đổi và đóng góp cho dự án.
+
+---
+*Phát triển bởi [leluongnghia](https://github.com/leluongnghia)*
