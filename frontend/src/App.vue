@@ -1,5 +1,5 @@
 <template>
-  <v-app :class="{ 'liquid-bg': isLiquidBg }">
+  <v-app>
     <!-- Only render when route is identified to prevent DefaultLayout flash on / -> /login redirect -->
     <template v-if="route.name">
       <!-- Top bar -->
@@ -35,9 +35,7 @@
       <v-main :class="{ 'd-flex align-center justify-center': !isFullLayout }" :style="!isFullLayout ? 'min-height: 100vh;' : ''">
         <v-container :fluid="isFullLayout" :style="!isFullLayout ? 'max-width: 450px;' : ''">
           <router-view v-slot="{ Component }">
-            <transition name="fade" mode="out-in">
-              <component :is="Component" :key="$route.path" />
-            </transition>
+            <component :is="Component" :key="$route.path" />
           </router-view>
         </v-container>
       </v-main>
@@ -61,7 +59,6 @@ const rail = ref(false);
 
 const isDark = computed(() => theme.global.name.value === 'dark');
 const isFullLayout = computed(() => route.meta.layout !== 'auth');
-const isLiquidBg = computed(() => (route.meta.layout === 'auth' || isDark.value));
 
 const menuItems = [
   { title: 'Dashboard', icon: 'mdi-view-dashboard-outline', path: '/' },
@@ -89,14 +86,3 @@ onMounted(() => {
   if (savedTheme) theme.global.name.value = savedTheme;
 });
 </script>
-
-<style>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.15s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>

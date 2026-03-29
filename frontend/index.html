@@ -10,25 +10,27 @@
         --navy-deep: #0A192F;
         --navy-light: #112240;
       }
+      @keyframes flow-bg {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
       body {
         margin: 0;
-        background: #0A192F;
-        overflow: hidden;
-      }
-      #app {
-        min-height: 100vh;
-      }
-      /* Fast placeholder for liquid bg avoid white flash */
-      .pre-liquid {
         background: linear-gradient(-45deg, #0A192F, #112240, #004d7a, #008fb3);
         background-size: 400% 400%;
-        position: fixed;
-        inset: 0;
-        z-index: -1;
+        animation: flow-bg 15s ease infinite;
+        font-family: sans-serif;
+        color: white;
+        min-height: 100vh;
+      }
+      /* Ensure Vuetify app is transparent to show body bg */
+      .v-application {
+        background: transparent !important;
       }
     </style>
   </head>
-  <body class="pre-liquid">
+  <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
