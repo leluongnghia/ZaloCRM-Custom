@@ -1,5 +1,5 @@
 <template>
-  <v-app :class="{ 'liquid-bg': isDark }">
+  <div>
     <!-- Top bar — glass effect -->
     <v-app-bar density="comfortable" flat>
       <v-app-bar-nav-icon @click="drawer = !drawer" />
@@ -78,7 +78,7 @@
         <slot />
       </v-container>
     </v-main>
-  </v-app>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -98,7 +98,7 @@ const rail = ref(false);
 const isDark = ref(localStorage.getItem('theme') !== 'light');
 
 onMounted(() => {
-  theme.global.name.value = isDark.value ? 'dark' : 'light';
+  // Theme is handled in App.vue root
 });
 
 const menuItems = [
