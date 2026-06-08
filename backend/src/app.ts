@@ -38,6 +38,8 @@ import { startZaloHealthCheck } from './modules/zalo/zalo-health-check.js';
 import { publicApiRoutes } from './modules/api/public-api-routes.js';
 import { webhookSettingsRoutes } from './modules/api/webhook-settings-routes.js';
 import { systemRoutes } from './modules/auth/system-routes.js';
+import { logisticsRoutes } from './modules/logistics/logistics-routes.js';
+import { startLogisticsCron } from './modules/logistics/cron-jobs.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -114,6 +116,7 @@ async function bootstrap() {
   await app.register(publicApiRoutes);
   await app.register(webhookSettingsRoutes);
   await app.register(systemRoutes);
+  await app.register(logisticsRoutes);
 
   // Liveness/readiness probe — also checks DB connectivity
   app.get('/health', async () => {
@@ -157,6 +160,7 @@ async function bootstrap() {
     logger.info(`Environment: ${config.nodeEnv}`);
     startAppointmentReminder(io);
     startZaloHealthCheck();
+    startLogisticsCron();
   } catch (err) {
     logger.error('Failed to start server:', err);
     process.exit(1);

@@ -23,6 +23,9 @@ model Organization {
   dailyStats    DailyMessageStat[]
   settings      AppSetting[]
 
+  carrierIntegrations CarrierIntegration[]
+  orders              Order[]
+
   @@map("organizations")
 }
 
@@ -60,6 +63,8 @@ model User {
   appointments     Appointment[]
   repliedMessages  Message[]           @relation("RepliedMessages")
   activityLogs     ActivityLog[]
+
+  orders           Order[]
 
   @@map("users")
 }
@@ -127,6 +132,8 @@ model Contact {
   assignedUser  User?          @relation("AssignedContacts", fields: [assignedUserId], references: [id])
   conversations Conversation[]
   appointments  Appointment[]
+
+  orders        Order[]
 
   @@map("contacts")
 }
@@ -248,4 +255,128 @@ model AppSetting {
 
   @@unique([orgId, settingKey])
   @@map("app_settings")
+}
+
+model CarrierIntegration {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  carrierCode String   @map("carrier_code")
+  carrierName String   @map("carrier_name")
+  configData  Json     @map("config_data")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  orders    Order[]
+  shipments Shipment[]
+
+  @@unique([orgId, carrierCode])
+  @@map("carrier_integrations")
+}
+
+model Order {
+  id                  String   @id @default(uuid())
+  orgId               String   @map("org_id")
+  orderCode           String   @unique @map("order_code")
+  customerId          String?  @map("customer_id")
+  creatorId           String   @map("creator_id")
+  carrierId           String?  @map("carrier_id")
+  status              String   @default("DRAFT")
+  subtotalAmount      Decimal  @default(0.00) @map("subtotal_amount") @db.Decimal(15, 2)
+  discountAmount      Decimal  @default(0.00) @map("discount_amount") @db.Decimal(15, 2)
+  shippingFee         Decimal  @default(0.00) @map("shipping_fee") @db.Decimal(15, 2)
+  totalAmount         Decimal  @default(0.00) @map("total_amount") @db.Decimal(15, 2)
+  codAmount           Decimal  @default(0.00) @map("cod_amount") @db.Decimal(15, 2)
+  shippingAddressJson Json     @map("shipping_address_json")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  org      Organization        @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  customer Contact?            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  creator  User                @relation(fields: [creatorId], references: [id], onDelete: Restrict)
+  carrier  CarrierIntegration? @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  items    OrderItem[]
+  shipment Shipment?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id          String   @id @default(uuid())
+  orderId     String   @map("order_id")
+  productName String   @map("product_name")
+  productId   String?  @map("product_id")
+  quantity    Int
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(15, 2)
+  totalPrice  Decimal  @map("total_price") @db.Decimal(15, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Shipment {
+  id                 String    @id @default(uuid())
+  orderId            String    @unique @map("order_id")
+  carrierId          String?   @map("carrier_id")
+  trackingNumber     String?   @unique @map("tracking_number")
+  status             String    @default("PENDING_WAYBILL")
+  weightGrams        Int       @default(0) @map("weight_grams")
+  codAmount          Decimal   @default(0.00) @map("cod_amount") @db.Decimal(15, 2)
+  shippingFeeCharged Decimal   @default(0.00) @map("shipping_fee_charged") @db.Decimal(15, 2)
+  labelPdfUrl        String?   @map("label_pdf_url")
+  estimatedDelivery  DateTime? @map("estimated_delivery")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  order         Order                   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier       CarrierIntegration?     @relation(fields: [carrierId], references: [id], onDelete: Restrict)
+  statusHistory ShipmentStatusHistory[]
+  trackingLogs  ShipmentTrackingLog[]
+  codCheck      CodTransaction?
+
+  @@map("shipments")
+}
+
+model ShipmentStatusHistory {
+  id         String   @id @default(uuid())
+  shipmentId String   @map("shipment_id")
+  fromStatus String   @map("from_status")
+  toStatus   String   @map("to_status")
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_status_history")
+}
+
+model ShipmentTrackingLog {
+  id         String   @id @default(uuid())
+  shipmentId String   @map("shipment_id")
+  location   String?
+  activity   String
+  occurredAt DateTime @map("occurred_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@map("shipment_tracking_logs")
+}
+
+model CodTransaction {
+  id              String    @id @default(uuid())
+  shipmentId      String    @unique @map("shipment_id")
+  transactionCode String?   @map("transaction_code")
+  amount          Decimal   @db.Decimal(15, 2)
+  status          String    @default("UNRECONCILED")
+  reconciledAt    DateTime? @map("reconciled_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+
+  @@map("cod_transactions")
 }

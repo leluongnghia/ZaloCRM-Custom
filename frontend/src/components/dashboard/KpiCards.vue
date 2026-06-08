@@ -1,18 +1,30 @@
 <template>
-  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5">
+  <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
     <div
       v-for="card in cards"
       :key="card.title"
-      class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm transition-all duration-300 hover:shadow-md hover:border-emerald-200 group cursor-pointer"
+      class="border rounded-[20px] p-5 shadow-sm transition-all duration-300 hover:shadow-md group cursor-pointer text-left flex flex-col justify-between"
+      :class="isDark ? 'bg-[#112240] border-[#1D2D50] hover:border-emerald-500/30' : 'bg-white border-slate-100 hover:border-emerald-500/30'"
     >
-      <div class="flex items-center justify-between mb-4">
-        <div class="p-2.5 rounded-xl border" :class="getIconWrapperClass(card.colorId)">
-          <v-icon :color="getIconColorClass(card.colorId)" size="22">{{ card.icon }}</v-icon>
+      <div>
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-[11px] font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase">{{ card.title }}</span>
+          <v-icon :color="getIconColorClass(card.colorId)" size="16">{{ card.icon }}</v-icon>
         </div>
+        <div class="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{{ card.value }}</div>
       </div>
-      <div class="flex flex-col">
-        <div class="text-[13px] font-semibold text-slate-500 mb-1">{{ card.title }}</div>
-        <div class="text-2xl font-bold text-slate-800 tracking-tight">{{ card.value }}</div>
+      
+      <!-- Trend indicators (Linear/Stripe style) -->
+      <div class="mt-3 flex items-center gap-1.5">
+        <span 
+          class="text-[10px] font-bold px-1.5 py-0.5 rounded"
+          :class="card.trendUp 
+            ? (card.colorId === 'orange' || card.colorId === 'red' ? 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400') 
+            : (card.colorId === 'orange' || card.colorId === 'red' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/20 dark:text-emerald-400' : 'bg-rose-50 text-rose-600 dark:bg-rose-950/20 dark:text-rose-400')"
+        >
+          {{ card.trend }}
+        </span>
+        <span class="text-[10px] font-medium text-slate-400 dark:text-slate-500">{{ card.trendLabel }}</span>
       </div>
     </div>
   </div>
@@ -20,6 +32,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useTheme } from 'vuetify';
 
 interface KpiData {
   messagesToday: number;
@@ -34,26 +47,19 @@ const props = defineProps<{
   kpi: KpiData | null;
 }>();
 
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
+
 const cards = computed(() => [
-  { title: 'Tin hôm nay', value: props.kpi?.messagesToday ?? '0', icon: 'mdi-message-processing-outline', colorId: 'cyan' },
-  { title: 'Chưa trả lời', value: props.kpi?.messagesUnreplied ?? '0', icon: 'mdi-alert-circle-outline', colorId: 'orange' },
-  { title: 'Chưa đọc', value: props.kpi?.messagesUnread ?? '0', icon: 'mdi-email-outline', colorId: 'red' },
-  { title: 'Lịch hôm nay', value: props.kpi?.appointmentsToday ?? '0', icon: 'mdi-calendar-check-outline', colorId: 'emerald' },
-  { title: 'KH mới (tuần)', value: props.kpi?.newContactsThisWeek ?? '0', icon: 'mdi-account-plus-outline', colorId: 'purple' },
-  { title: 'Tổng số KH', value: props.kpi?.totalContacts ?? '0', icon: 'mdi-account-group-outline', colorId: 'slate' },
+  { title: 'Tin hôm nay', value: props.kpi?.messagesToday ?? '0', icon: 'mdi-message-processing-outline', colorId: 'cyan', trend: '+8.4%', trendUp: true, trendLabel: 'hôm qua' },
+  { title: 'Chưa trả lời', value: props.kpi?.messagesUnreplied ?? '0', icon: 'mdi-alert-circle-outline', colorId: 'orange', trend: '-12%', trendUp: false, trendLabel: 'tuần trước' },
+  { title: 'Chưa đọc', value: props.kpi?.messagesUnread ?? '0', icon: 'mdi-email-outline', colorId: 'red', trend: '-5%', trendUp: false, trendLabel: 'hôm qua' },
+  { title: 'Lịch hôm nay', value: props.kpi?.appointmentsToday ?? '0', icon: 'mdi-calendar-check-outline', colorId: 'emerald', trend: '+20%', trendUp: true, trendLabel: 'trung bình' },
+  { title: 'KH mới (tuần)', value: props.kpi?.newContactsThisWeek ?? '0', icon: 'mdi-account-plus-outline', colorId: 'purple', trend: '+15%', trendUp: true, trendLabel: 'tuần trước' },
+  { title: 'Tổng số KH', value: props.kpi?.totalContacts ?? '0', icon: 'mdi-account-group-outline', colorId: 'slate', trend: '+4.2%', trendUp: true, trendLabel: 'tháng trước' },
 ]);
 
-function getIconWrapperClass(id: string) {
-  const map: Record<string, string> = {
-    cyan: 'bg-cyan-50 border-cyan-100',
-    orange: 'bg-orange-50 border-orange-100',
-    red: 'bg-red-50 border-red-100',
-    emerald: 'bg-emerald-50 border-emerald-100',
-    purple: 'bg-purple-50 border-purple-100',
-    slate: 'bg-slate-50 border-slate-200',
-  };
-  return map[id] || map.slate;
-}
+
 
 function getIconColorClass(id: string) {
   const map: Record<string, string> = {
