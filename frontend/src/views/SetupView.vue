@@ -2,8 +2,8 @@
   <v-card class="pa-6" elevation="8">
     <div class="text-center mb-6">
       <v-icon icon="mdi-cog" size="64" color="primary" />
-      <h1 class="text-h5 mt-2">Thiết lập ban đầu</h1>
-      <p class="text-body-2 text-grey mt-1">Tạo tổ chức và tài khoản quản trị viên</p>
+      <h1 class="text-h5 mt-2" :class="isDark ? 'text-slate-100' : 'text-slate-800'">Thiết lập ban đầu</h1>
+      <p class="text-body-2 mt-1" :style="{ color: isDark ? '#8892b0' : '#475569' }">Tạo tổ chức và tài khoản quản trị viên</p>
     </div>
     <v-form @submit.prevent="handleSetup" ref="form">
       <v-text-field v-model="orgName" label="Tên tổ chức / phòng khám" prepend-inner-icon="mdi-domain" :rules="[v => !!v || 'Bắt buộc']" class="mb-2" />
@@ -18,9 +18,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useTheme } from 'vuetify';
 
 const orgName = ref('');
 const fullName = ref('');
@@ -31,6 +32,9 @@ const error = ref('');
 const success = ref(false);
 const router = useRouter();
 const authStore = useAuthStore();
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
 
 async function handleSetup() {
   loading.value = true;
@@ -46,3 +50,4 @@ async function handleSetup() {
   }
 }
 </script>
+

@@ -1,10 +1,24 @@
 <template>
   <div>
     <!-- Toolbar -->
-    <div class="d-flex align-center mb-4 flex-wrap gap-2">
-      <h1 class="text-h5 mr-4">Khách hàng</h1>
-      <v-spacer />
-      <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate">Thêm KH</v-btn>
+    <div class="flex items-center justify-between mb-8 mt-2">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
+          <div class="p-2 rounded-xl" :class="isDark ? 'bg-[#1D2D50]' : 'bg-emerald-50'">
+            <v-icon size="28" :color="isDark ? '#00F2FF' : 'emerald-600'">mdi-account-group-outline</v-icon>
+          </div>
+          Khách hàng
+        </h1>
+        <p class="text-[15px] mt-2 font-medium" :class="isDark ? 'text-slate-400' : 'text-slate-500'">
+          Quản lý danh bạ khách hàng Zalo, phân loại và trạng thái chăm sóc
+        </p>
+      </div>
+      
+      <div>
+        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreate" class="font-bold">
+          Thêm KH
+        </v-btn>
+      </div>
     </div>
 
     <!-- Filters -->
@@ -87,13 +101,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import ContactFilters from '@/components/contacts/ContactFilters.vue';
 import ContactDetailDialog from '@/components/contacts/ContactDetailDialog.vue';
 import { useContacts, SOURCE_OPTIONS, STATUS_OPTIONS } from '@/composables/use-contacts';
 import type { Contact } from '@/composables/use-contacts';
+import { useTheme } from 'vuetify';
 
 const { contacts, total, loading, filters, pagination, fetchContacts } = useContacts();
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
 
 const showDialog = ref(false);
 const selectedContact = ref<Contact | null>(null);

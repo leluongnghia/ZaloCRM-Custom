@@ -1,5 +1,5 @@
 <template>
-  <div class="chat-container d-flex" style="height: calc(100vh - 64px);">
+  <div class="chat-container d-flex h-full w-full overflow-hidden">
     <!-- Conversation list — resizable -->
     <div class="chat-panel-left" :style="{ width: leftWidth + 'px' }">
       <ConversationList
@@ -111,10 +111,6 @@ watch(searchQuery, () => {
 </script>
 
 <style scoped>
-.chat-container {
-  margin: -12px;
-}
-
 .chat-panel-left {
   position: relative;
   flex-shrink: 0;

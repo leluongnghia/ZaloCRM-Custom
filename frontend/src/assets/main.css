@@ -328,3 +328,9 @@ html, body {
 .v-theme--light .text-grey-lighten-2 {
   color: #bbb !important;
 }
+
+/* Smooth transitions for theme switching */
+.v-application, aside, header, .v-main, .v-card, .v-btn, select, input, option, table, tr, td, th {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease, box-shadow 0.2s ease !important;
+}
+

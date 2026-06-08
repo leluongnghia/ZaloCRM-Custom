@@ -1,30 +1,41 @@
 <template>
   <div>
-    <div class="d-flex align-center mb-4 flex-wrap gap-2">
-      <h1 class="text-h4">Báo cáo</h1>
-      <v-spacer />
-      <v-text-field
-        v-model="dateFrom"
-        label="Từ ngày"
-        type="date"
-        density="compact"
-        variant="outlined"
-        style="max-width: 180px;"
-        class="mr-2"
-        hide-details
-      />
-      <v-text-field
-        v-model="dateTo"
-        label="Đến ngày"
-        type="date"
-        density="compact"
-        variant="outlined"
-        style="max-width: 180px;"
-        class="mr-2"
-        hide-details
-      />
-      <v-btn color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="fetchReport">Xem</v-btn>
-      <v-btn color="success" prepend-icon="mdi-file-excel" class="ml-2" :loading="exporting" @click="exportExcel">Xuất Excel</v-btn>
+    <!-- Toolbar -->
+    <div class="flex items-center justify-between mb-8 mt-2 flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
+          <div class="p-2 rounded-xl" :class="isDark ? 'bg-[#1D2D50]' : 'bg-emerald-50'">
+            <v-icon size="28" :color="isDark ? '#00F2FF' : 'emerald-600'">mdi-chart-box-outline</v-icon>
+          </div>
+          Báo cáo
+        </h1>
+        <p class="text-[15px] mt-2 font-medium" :class="isDark ? 'text-slate-400' : 'text-slate-500'">
+          Phân tích tin nhắn, tăng trưởng khách hàng và thống kê lịch hẹn
+        </p>
+      </div>
+      
+      <div class="flex items-center gap-2 flex-wrap">
+        <v-text-field
+          v-model="dateFrom"
+          label="Từ ngày"
+          type="date"
+          density="compact"
+          variant="outlined"
+          style="max-width: 160px;"
+          hide-details
+        />
+        <v-text-field
+          v-model="dateTo"
+          label="Đến ngày"
+          type="date"
+          density="compact"
+          variant="outlined"
+          style="max-width: 160px;"
+          hide-details
+        />
+        <v-btn color="primary" prepend-icon="mdi-refresh" :loading="loading" @click="fetchReport" class="font-bold">Xem</v-btn>
+        <v-btn color="success" prepend-icon="mdi-file-excel" :loading="exporting" @click="exportExcel" class="font-bold">Xuất Excel</v-btn>
+      </div>
     </div>
 
     <v-tabs v-model="tab" class="mb-4">
@@ -63,8 +74,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { api } from '@/api';
+import { useTheme } from 'vuetify';
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
 
 // Date defaults: last 30 days
 const today = new Date();

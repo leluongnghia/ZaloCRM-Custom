@@ -3,25 +3,16 @@
     <!-- Header -->
     <div class="flex items-center justify-between mb-8 mt-2">
       <div>
-        <h1 class="text-3xl font-bold tracking-tight text-slate-800 flex items-center gap-3">
-          <div class="p-2 bg-emerald-50 rounded-xl">
-            <v-icon size="28" color="emerald-600">mdi-shield-crown-outline</v-icon>
+        <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
+          <div class="p-2 rounded-xl" :class="isDark ? 'bg-[#1D2D50]' : 'bg-emerald-50'">
+            <v-icon size="28" :color="isDark ? '#00F2FF' : 'emerald-600'">mdi-shield-crown-outline</v-icon>
           </div>
           Admin Dashboard
         </h1>
-        <p class="text-[15px] text-slate-500 mt-2 font-medium">Quản lý nâng cao, người dùng và cập nhật hệ thống</p>
+        <p class="text-[15px] mt-2 font-medium" :class="isDark ? 'text-slate-400' : 'text-slate-500'">Quản lý nâng cao, người dùng và cập nhật hệ thống</p>
       </div>
 
       <div class="flex items-center gap-4">
-        <button 
-          v-if="authStore.isOwner"
-          @click="handleSystemUpdate" 
-          :disabled="sysUpdating"
-          class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-sm shadow-emerald-200 transition-all font-semibold disabled:opacity-50"
-        >
-          <v-icon size="18" :class="{'animate-spin': sysUpdating}">mdi-github</v-icon>
-          <span>{{ sysUpdating ? 'Đang cập nhật...' : 'Cập nhật từ Git' }}</span>
-        </button>
       </div>
     </div>
 
@@ -29,11 +20,16 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       <!-- Sidebar / Tab Menu -->
       <div class="lg:col-span-3">
-        <div class="bg-white border border-slate-200 rounded-3xl p-3 shadow-sm sticky top-6">
+        <div 
+          class="border rounded-3xl p-3 shadow-sm sticky top-6"
+          :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-200'"
+        >
           <div class="space-y-1">
             <button 
               @click="tab = 'users'" 
-              :class="tab === 'users' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:bg-slate-50'"
+              :class="tab === 'users' 
+                ? (isDark ? 'bg-[#1D2D50] text-[#00F2FF] font-bold shadow-sm shadow-[#00F2FF]/5' : 'bg-emerald-50 text-emerald-700 font-bold') 
+                : (isDark ? 'text-slate-300 hover:bg-[#1D2D50]/50 hover:text-[#00F2FF]' : 'text-slate-600 hover:bg-slate-50')"
               class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
             >
               <v-icon size="20">mdi-account-group-outline</v-icon>
@@ -41,7 +37,9 @@
             </button>
             <button 
               @click="tab = 'teams'" 
-              :class="tab === 'teams' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:bg-slate-50'"
+              :class="tab === 'teams' 
+                ? (isDark ? 'bg-[#1D2D50] text-[#00F2FF] font-bold shadow-sm shadow-[#00F2FF]/5' : 'bg-emerald-50 text-emerald-700 font-bold') 
+                : (isDark ? 'text-slate-300 hover:bg-[#1D2D50]/50 hover:text-[#00F2FF]' : 'text-slate-600 hover:bg-slate-50')"
               class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
             >
               <v-icon size="20">mdi-account-multiple-outline</v-icon>
@@ -49,7 +47,9 @@
             </button>
             <button 
               @click="tab = 'org'" 
-              :class="tab === 'org' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:bg-slate-50'"
+              :class="tab === 'org' 
+                ? (isDark ? 'bg-[#1D2D50] text-[#00F2FF] font-bold shadow-sm shadow-[#00F2FF]/5' : 'bg-emerald-50 text-emerald-700 font-bold') 
+                : (isDark ? 'text-slate-300 hover:bg-[#1D2D50]/50 hover:text-[#00F2FF]' : 'text-slate-600 hover:bg-slate-50')"
               class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
             >
               <v-icon size="20">mdi-domain</v-icon>
@@ -57,7 +57,9 @@
             </button>
             <button 
               @click="tab = 'system'" 
-              :class="tab === 'system' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:bg-slate-50'"
+              :class="tab === 'system' 
+                ? (isDark ? 'bg-[#1D2D50] text-[#00F2FF] font-bold shadow-sm shadow-[#00F2FF]/5' : 'bg-emerald-50 text-emerald-700 font-bold') 
+                : (isDark ? 'text-slate-300 hover:bg-[#1D2D50]/50 hover:text-[#00F2FF]' : 'text-slate-600 hover:bg-slate-50')"
               class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all text-left"
             >
               <v-icon size="20">mdi-server-network</v-icon>
@@ -71,9 +73,13 @@
       <div class="lg:col-span-9">
         
         <!-- =================== USERS TAB =================== -->
-        <div v-if="tab === 'users'" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+        <div 
+          v-if="tab === 'users'" 
+          class="border rounded-3xl p-6 shadow-sm"
+          :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-200'"
+        >
           <div class="flex items-center justify-between mb-6">
-            <div class="text-h6 font-bold text-slate-800">Danh sách nhân sự</div>
+            <div class="text-h6 font-bold" :class="isDark ? 'text-slate-100' : 'text-slate-800'">Danh sách nhân sự</div>
             <button v-if="authStore.isAdmin" @click="openCreate" class="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold px-4 py-2 rounded-xl flex items-center gap-2 transition-colors">
               <v-icon size="18">mdi-plus</v-icon>
               Thêm nhân viên
@@ -85,9 +91,9 @@
             <v-icon @click="error = ''" class="cursor-pointer">mdi-close</v-icon>
           </div>
 
-          <div class="border border-slate-200 rounded-2xl overflow-hidden">
+          <div class="border rounded-2xl overflow-hidden" :class="isDark ? 'border-[#1D2D50]' : 'border-slate-200'">
             <table class="w-full text-left text-sm whitespace-nowrap">
-              <thead class="bg-slate-50 border-b border-slate-200 text-slate-500">
+              <thead class="border-b text-slate-500" :class="isDark ? 'bg-[#1D2D50]/30 border-[#1D2D50] text-slate-300' : 'bg-slate-50 border-slate-200'">
                 <tr>
                   <th class="px-6 py-4 font-semibold">Tài khoản (Email)</th>
                   <th class="px-6 py-4 font-semibold">Vai trò</th>
@@ -95,16 +101,16 @@
                   <th class="px-6 py-4 font-semibold text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody class="divide-y divide-slate-100">
-                <tr v-if="loading" class="bg-white">
+              <tbody class="divide-y" :class="isDark ? 'divide-[#1D2D50]' : 'divide-slate-100'">
+                <tr v-if="loading" :class="isDark ? 'bg-transparent' : 'bg-white'">
                   <td colspan="4" class="px-6 py-8 text-center text-slate-400">Đang tải dữ liệu...</td>
                 </tr>
-                <tr v-else-if="users.length === 0" class="bg-white">
+                <tr v-else-if="users.length === 0" :class="isDark ? 'bg-transparent' : 'bg-white'">
                   <td colspan="4" class="px-6 py-8 text-center text-slate-400">Chưa có nhân viên nào.</td>
                 </tr>
-                <tr v-for="item in users" :key="item.id" class="bg-white hover:bg-slate-50/80 transition-colors">
+                <tr v-for="item in users" :key="item.id" :class="isDark ? 'bg-transparent hover:bg-[#1D2D50]/20' : 'bg-white hover:bg-slate-50/80'" class="transition-colors">
                   <td class="px-6 py-4">
-                    <div class="font-bold text-slate-800">{{ item.fullName }}</div>
+                    <div class="font-bold" :class="isDark ? 'text-slate-100' : 'text-slate-800'">{{ item.fullName }}</div>
                     <div class="text-slate-500 text-xs">{{ item.email }}</div>
                   </td>
                   <td class="px-6 py-4">
@@ -116,7 +122,7 @@
                         <span v-if="item.isActive" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2" :class="item.isActive ? 'bg-emerald-500' : 'bg-slate-300'"></span>
                       </span>
-                      <span :class="item.isActive ? 'text-slate-700' : 'text-slate-400'">{{ item.isActive ? 'Hoạt động' : 'Vô hiệu' }}</span>
+                      <span :class="item.isActive ? (isDark ? 'text-slate-200' : 'text-slate-700') : 'text-slate-400'">{{ item.isActive ? 'Hoạt động' : 'Vô hiệu' }}</span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-right">
@@ -139,36 +145,36 @@
         </div>
 
         <!-- =================== TEAMS TAB =================== -->
-        <div v-if="tab === 'teams'" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+        <div v-if="tab === 'teams'" class="border rounded-3xl p-6 shadow-sm" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-200'">
           <TeamManagement />
         </div>
 
         <!-- =================== ORG TAB =================== -->
-        <div v-if="tab === 'org'" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+        <div v-if="tab === 'org'" class="border rounded-3xl p-6 shadow-sm" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-200'">
           <OrgSettings />
         </div>
 
         <!-- =================== SYSTEM TAB =================== -->
-        <div v-if="tab === 'system'" class="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
+        <div v-if="tab === 'system'" class="border rounded-3xl p-6 shadow-sm" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-200'">
           <div class="flex items-center gap-3 mb-8">
             <div class="p-2 bg-blue-50 rounded-xl">
               <v-icon color="blue-600">mdi-server-network</v-icon>
             </div>
-            <h3 class="text-xl font-bold text-slate-800">Trạng thái máy chủ</h3>
+            <h3 class="text-xl font-bold" :class="isDark ? 'text-slate-100' : 'text-slate-800'">Trạng thái máy chủ</h3>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col justify-center">
+            <div class="border rounded-2xl p-5 flex flex-col justify-center" :class="isDark ? 'bg-[#1D2D50]/20 border-[#1D2D50]' : 'bg-slate-50 border-slate-200'">
               <div class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
                 <v-icon size="16">mdi-source-branch</v-icon> Phiên bản
               </div>
-              <div class="text-2xl font-bold text-slate-800">
+              <div class="text-2xl font-bold" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
                 {{ sysLoading ? 'Đang kiểm tra...' : (systemVersion?.version || '1.0.0') }}
               </div>
               <div class="text-xs font-mono text-slate-400 mt-1 uppercase">{{ systemVersion?.commit || 'n/a' }}</div>
             </div>
 
-            <div class="border border-slate-200 rounded-2xl p-5 bg-slate-50 flex flex-col justify-center">
+            <div class="border rounded-2xl p-5 flex flex-col justify-center" :class="isDark ? 'bg-[#1D2D50]/20 border-[#1D2D50]' : 'bg-slate-50 border-slate-200'">
                <div class="text-sm font-semibold text-slate-500 mb-1 flex items-center gap-2">
                 <v-icon size="16">mdi-calendar-clock</v-icon> Lần cập nhật cuối
               </div>
@@ -316,15 +322,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useUsers, type OrgUser } from '@/composables/use-users';
 import { useAuthStore } from '@/stores/auth';
 import TeamManagement from '@/components/settings/TeamManagement.vue';
 import OrgSettings from '@/components/settings/OrgSettings.vue';
 import { useSystem } from '@/composables/use-system';
+import { useTheme } from 'vuetify';
 
 const { users, loading, error, fetchUsers, createUser, updateUser, resetPassword, deleteUser } = useUsers();
 const authStore = useAuthStore();
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
 const {
   version: systemVersion,
   loading: sysLoading,

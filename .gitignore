@@ -6,3 +6,6 @@ backups/
 .DS_Store
 .agent/
 .agents/
+npm-cache/
+*.code-workspace
+

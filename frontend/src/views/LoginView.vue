@@ -3,18 +3,23 @@
     <div class="text-center mb-8">
       <div
         class="ai-core-orb mx-auto mb-4 d-flex align-center justify-center"
-        style="width: 64px; height: 64px; background: linear-gradient(135deg, #00F2FF, #0077B6);"
+        :style="{ background: isDark ? 'linear-gradient(135deg, #00F2FF, #0077B6)' : 'linear-gradient(135deg, #10B981, #047857)' }"
+        style="width: 64px; height: 64px;"
       >
-        <v-icon size="32" color="white">mdi-robot</v-icon>
+        <v-icon size="32" color="white">{{ isDark ? 'mdi-robot' : 'mdi-view-grid-plus' }}</v-icon>
       </div>
-      <h1 class="text-h5 font-weight-bold">Zalo<span style="color: #00F2FF;">CRM</span></h1>
-      <p class="text-caption mt-1" style="color: #8892b0;">Liquid Silicon • Multi-Account Zalo Management</p>
+      <h1 class="text-h5 font-weight-bold" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
+        Zalo<span :style="{ color: isDark ? '#00F2FF' : '#10B981' }">CRM</span>
+      </h1>
+      <p class="text-caption mt-1" :style="{ color: isDark ? '#8892b0' : '#475569' }">
+        Liquid Silicon • Multi-Account Zalo Management
+      </p>
     </div>
 
     <!-- Wait for setup check -->
     <div v-if="checkingSetup" class="d-flex flex-column align-center justify-center flex-grow-1">
       <v-progress-circular indeterminate color="primary" size="48" width="4"></v-progress-circular>
-      <div class="mt-4 text-caption" style="color: #8892b0;">Đang tải...</div>
+      <div class="mt-4 text-caption" :style="{ color: isDark ? '#8892b0' : '#475569' }">Đang tải...</div>
     </div>
 
     <v-form v-else @submit.prevent="handleLogin">
@@ -47,9 +52,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useTheme } from 'vuetify';
 
 const email = ref('');
 const password = ref('');
@@ -58,6 +64,9 @@ const error = ref('');
 const checkingSetup = ref(true);
 const router = useRouter();
 const authStore = useAuthStore();
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
 
 onMounted(async () => {
   try {
@@ -85,3 +94,4 @@ async function handleLogin() {
   }
 }
 </script>
+
