@@ -14,13 +14,14 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://${DB_USER:-crmuser}:${DB_PASSWORD}@db:5432/${DB_NAME:-zalocrm}
+      - PROJECT_PATH=${PROJECT_PATH:-/var/www/quanly.khacdaunhanh.vn}
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - file_storage:/var/lib/zalo-crm/files
       - /var/run/docker.sock:/var/run/docker.sock
-      - /var/www/quanly.khacdaunhanh.vn:/var/www/quanly.khacdaunhanh.vn
+      - ${PROJECT_PATH:-/var/www/quanly.khacdaunhanh.vn}:${PROJECT_PATH:-/var/www/quanly.khacdaunhanh.vn}
     tmpfs:
       - /tmp
     security_opt:

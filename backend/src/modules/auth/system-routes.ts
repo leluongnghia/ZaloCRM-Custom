@@ -27,7 +27,7 @@ export async function systemRoutes(app: FastifyInstance): Promise<void> {
       logger.info(`System update requested by ${user.email}`);
 
       try {
-        const targetPath = '/var/www/quanly.khacdaunhanh.vn';
+        const targetPath = process.env.PROJECT_PATH || '/var/www/quanly.khacdaunhanh.vn';
 
         // Add to safe directory to avoid dubious ownership errors
         await execPromise(`git config --global --add safe.directory ${targetPath}`).catch(() => {});
@@ -78,9 +78,10 @@ export async function systemRoutes(app: FastifyInstance): Promise<void> {
    */
   app.get('/api/v1/system/version', async () => {
     try {
-      // Try to get the latest commit hash and date
-      const { stdout: hash } = await execPromise('git rev-parse --short HEAD').catch(() => ({ stdout: 'unknown' }));
-      const { stdout: date } = await execPromise('git log -1 --format=%cd --date=iso').catch(() => ({ stdout: 'unknown' }));
+      const targetPath = process.env.PROJECT_PATH || '/var/www/quanly.khacdaunhanh.vn';
+      // Try to get the latest commit hash and date inside mounted target directory
+      const { stdout: hash } = await execPromise('git rev-parse --short HEAD', { cwd: targetPath }).catch(() => ({ stdout: 'unknown' }));
+      const { stdout: date } = await execPromise('git log -1 --format="%cd" --date=iso', { cwd: targetPath }).catch(() => ({ stdout: 'unknown' }));
 
       return {
         version: '1.0.0',
