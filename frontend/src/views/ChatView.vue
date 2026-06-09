@@ -1,9 +1,24 @@
 <template>
-  <div class="chat-container d-flex h-full w-full overflow-hidden">
-    <!-- Conversation list — resizable -->
-    <div class="chat-panel-left" :style="{ width: leftWidth + 'px' }">
+  <div 
+    class="flex h-full w-full overflow-hidden transition-all duration-300 rounded-[20px] border"
+    :class="isDark ? 'bg-[#0A192F] border-[#1D2D50]' : 'bg-white border-slate-100'"
+  >
+    <!-- LEFT PANEL: Inbox Filters & Navigation -->
+    <ChatSidebar
+      :conversations="conversations"
+      v-model:activeFilter="activeFilter"
+      v-model:selectedAccountId="accountFilter"
+      @update:selectedAccountId="onFilterAccount"
+      v-model:selectedTag="selectedTag"
+      :unread-total="unreadTotal"
+      :filter-counts="filterCounts"
+      :account-options="accountOptions"
+    />
+
+    <!-- MIDDLE PANEL: Conversation List (Resizable) -->
+    <div class="relative flex flex-col border-r h-full" :class="isDark ? 'border-[#1D2D50]' : 'border-slate-100'" :style="{ width: leftWidth + 'px' }">
       <ConversationList
-        :conversations="conversations"
+        :conversations="filteredConversations"
         :selected-id="selectedConvId"
         :loading="loadingConvs"
         v-model:search="searchQuery"
@@ -14,37 +29,85 @@
       <div class="resize-handle" @mousedown="startResize('left', $event)" />
     </div>
 
-    <!-- Message thread — flexible center -->
-    <MessageThread
-      :conversation="selectedConv"
-      :messages="messages"
-      :loading="loadingMsgs"
-      :sending="sendingMsg"
-      @send="sendMessage"
-      @toggle-contact-panel="showContactPanel = !showContactPanel"
-      :show-contact-panel="showContactPanel"
-      style="flex: 1; min-width: 300px;"
-    />
-
-    <!-- Contact panel — resizable -->
-    <div v-if="showContactPanel && selectedConv?.contact" class="chat-panel-right" :style="{ width: rightWidth + 'px' }">
-      <div class="resize-handle resize-handle-left" @mousedown="startResize('right', $event)" />
-      <ChatContactPanel
-        :contact-id="selectedConv.contact.id"
-        :contact="selectedConv.contact"
-        @close="showContactPanel = false"
-        @saved="fetchConversations()"
+    <!-- RIGHT PANEL: Chat Area & Context Sidebar (Flexible Center) -->
+    <div class="flex-1 flex h-full overflow-hidden">
+      <!-- Active Message Thread -->
+      <MessageThread
+        :conversation="selectedConv"
+        :messages="messages"
+        :loading="loadingMsgs"
+        :sending="sendingMsg"
+        @send="sendMessage"
+        @toggle-contact-panel="showRightSidebar = !showRightSidebar"
+        :show-contact-panel="showRightSidebar"
+        style="flex: 1; min-width: 300px;"
       />
+
+      <!-- Right Tabbed Sidebar (Customer Info + AI Copilot) -->
+      <div 
+        v-if="showRightSidebar && selectedConv" 
+        class="flex flex-col border-l h-full"
+        :class="isDark ? 'border-[#1D2D50]' : 'border-slate-100'"
+        :style="{ width: rightWidth + 'px' }"
+      >
+        <!-- Tab Headers -->
+        <div class="flex border-b text-xs shrink-0" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-slate-50 border-slate-100'">
+          <button 
+            @click="activeRightTab = 'customer'"
+            class="flex-1 py-3 font-bold text-center border-b-2 transition-all duration-200"
+            :class="activeRightTab === 'customer'
+              ? (isDark ? 'border-[#10B981] text-[#10B981]' : 'border-emerald-600 text-emerald-700')
+              : 'border-transparent text-slate-400 hover:text-slate-600'"
+          >
+            Khách hàng
+          </button>
+          <button 
+            @click="activeRightTab = 'ai'"
+            class="flex-1 py-3 font-bold text-center border-b-2 transition-all duration-200"
+            :class="activeRightTab === 'ai'
+              ? (isDark ? 'border-[#10B981] text-[#10B981]' : 'border-emerald-600 text-emerald-700')
+              : 'border-transparent text-slate-400 hover:text-slate-600'"
+          >
+            Trợ lý AI
+          </button>
+        </div>
+
+        <!-- Tab Content -->
+        <div class="flex-1 overflow-hidden relative">
+          <CustomerDetailSidebar
+            v-if="activeRightTab === 'customer' && selectedConv.contact"
+            :contact-id="selectedConv.contact.id"
+            :contact="selectedConv.contact"
+            @close="showRightSidebar = false"
+            @saved="fetchConversations()"
+          />
+          <AiCopilotPanel
+            v-else-if="activeRightTab === 'ai'"
+            :conversation="selectedConv"
+            :messages="messages"
+            @use-reply="onUseAiReply"
+          />
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useTheme } from 'vuetify';
 import ConversationList from '@/components/chat/ConversationList.vue';
 import MessageThread from '@/components/chat/MessageThread.vue';
-import ChatContactPanel from '@/components/chat/ChatContactPanel.vue';
+import ChatSidebar from '@/components/chat/ChatSidebar.vue';
+import CustomerDetailSidebar from '@/components/chat/CustomerDetailSidebar.vue';
+import AiCopilotPanel from '@/components/chat/AiCopilotPanel.vue';
 import { useChat } from '@/composables/use-chat';
+import { useAuthStore } from '@/stores/auth';
+import { api } from '@/api/index';
+
+const theme = useTheme();
+const isDark = computed(() => theme.global.name.value === 'dark');
+const authStore = useAuthStore();
 
 const {
   conversations, selectedConvId, selectedConv, messages,
@@ -53,14 +116,87 @@ const {
   initSocket, destroySocket,
 } = useChat();
 
+const activeFilter = ref('all');
+const selectedTag = ref<string | null>(null);
+const activeRightTab = ref<'customer' | 'ai'>('customer');
+const showRightSidebar = ref(true);
+
+const accountOptions = ref<{ text: string; value: string }[]>([]);
+
 function onFilterAccount(id: string | null) {
   accountFilter.value = id;
   fetchConversations();
 }
 
-const showContactPanel = ref(false);
+function isToday(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false;
+  const d = new Date(dateStr);
+  const today = new Date();
+  return d.getDate() === today.getDate() &&
+         d.getMonth() === today.getMonth() &&
+         d.getFullYear() === today.getFullYear();
+}
 
-// Resizable panel widths (restored from localStorage)
+const unreadTotal = computed(() => {
+  return conversations.value.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+});
+
+const filterCounts = computed(() => {
+  const counts = { unread: 0, assigned: 0, waiting: 0, followup: 0, ai: 0 };
+  const userId = authStore.user?.id;
+  
+  conversations.value.forEach(c => {
+    if (c.unreadCount > 0) counts.unread++;
+    if (userId && c.contact?.assignedUserId === userId) counts.assigned++;
+    if (!c.isReplied) counts.waiting++;
+    if (c.contact?.nextAppointment && isToday(c.contact.nextAppointment)) counts.followup++;
+    
+    const lastMsgContent = c.messages?.[0]?.content?.toLowerCase() || '';
+    const hasHighIntent = lastMsgContent.match(/(giá|mua|sỉ|ship|đặt hàng|giao|bao nhiêu)/);
+    if (c.unreadCount > 0 && (!c.isReplied || hasHighIntent)) counts.ai++;
+  });
+  return counts;
+});
+
+const filteredConversations = computed(() => {
+  let list = conversations.value;
+  const userId = authStore.user?.id;
+
+  if (activeFilter.value === 'unread') {
+    list = list.filter(c => c.unreadCount > 0);
+  } else if (activeFilter.value === 'assigned') {
+    list = list.filter(c => userId && c.contact?.assignedUserId === userId);
+  } else if (activeFilter.value === 'waiting') {
+    list = list.filter(c => !c.isReplied);
+  } else if (activeFilter.value === 'followup') {
+    list = list.filter(c => c.contact?.nextAppointment && isToday(c.contact.nextAppointment));
+  } else if (activeFilter.value === 'ai') {
+    list = list.filter(c => {
+      const lastMsgContent = c.messages?.[0]?.content?.toLowerCase() || '';
+      const hasHighIntent = lastMsgContent.match(/(giá|mua|sỉ|ship|đặt hàng|giao|bao nhiêu)/);
+      return c.unreadCount > 0 && (!c.isReplied || hasHighIntent);
+    });
+  }
+
+  if (selectedTag.value) {
+    list = list.filter(c => {
+      if (!c.contact?.tags) return false;
+      try {
+        const parsed = typeof c.contact.tags === 'string' ? JSON.parse(c.contact.tags) : c.contact.tags;
+        return Array.isArray(parsed) && parsed.includes(selectedTag.value);
+      } catch {
+        return false;
+      }
+    });
+  }
+
+  return list;
+});
+
+function onUseAiReply(reply: string) {
+  sendMessage(reply);
+}
+
 const leftWidth = ref(parseInt(localStorage.getItem('chat-left-width') || '320'));
 const rightWidth = ref(parseInt(localStorage.getItem('chat-right-width') || '320'));
 
@@ -82,9 +218,9 @@ function onResize(e: MouseEvent) {
   if (!resizing) return;
   const diff = e.clientX - startX;
   if (resizing === 'left') {
-    leftWidth.value = Math.max(200, Math.min(500, startWidth + diff));
+    leftWidth.value = Math.max(240, Math.min(500, startWidth + diff));
   } else {
-    rightWidth.value = Math.max(250, Math.min(500, startWidth - diff));
+    rightWidth.value = Math.max(280, Math.min(500, startWidth - diff));
   }
 }
 
@@ -100,8 +236,23 @@ function stopResize() {
   document.body.style.userSelect = '';
 }
 
-onMounted(() => { fetchConversations(); initSocket(); });
-onUnmounted(() => { destroySocket(); });
+onMounted(async () => {
+  fetchConversations();
+  initSocket();
+
+  try {
+    const res = await api.get('/zalo-accounts');
+    const accounts = Array.isArray(res.data) ? res.data : res.data.accounts || [];
+    accountOptions.value = accounts.map((a: any) => ({
+      text: a.displayName || a.zaloUid || a.id,
+      value: a.id,
+    }));
+  } catch {}
+});
+
+onUnmounted(() => {
+  destroySocket();
+});
 
 let searchTimeout: ReturnType<typeof setTimeout>;
 watch(searchQuery, () => {
@@ -111,21 +262,6 @@ watch(searchQuery, () => {
 </script>
 
 <style scoped>
-.chat-panel-left {
-  position: relative;
-  flex-shrink: 0;
-  min-width: 200px;
-  max-width: 500px;
-}
-
-.chat-panel-right {
-  position: relative;
-  flex-shrink: 0;
-  min-width: 250px;
-  max-width: 500px;
-}
-
-/* Resize handle — thin vertical line on the edge */
 .resize-handle {
   position: absolute;
   top: 0;
@@ -140,11 +276,6 @@ watch(searchQuery, () => {
 
 .resize-handle:hover,
 .resize-handle:active {
-  background: rgba(0, 242, 255, 0.3);
-}
-
-.resize-handle-left {
-  right: auto;
-  left: -2px;
+  background: rgba(16, 185, 129, 0.3); /* Emerald green drag glow */
 }
 </style>

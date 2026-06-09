@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 mt-2">
+    <div class="flex items-center justify-between mb-2 mt-2">
       <div>
         <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
           <div class="p-2 rounded-xl" :class="isDark ? 'bg-[#1D2D50]' : 'bg-emerald-50'">
@@ -10,18 +10,17 @@
           Theo dõi vận chuyển (Logistics)
         </h1>
         <p class="text-[15px] mt-2 font-medium" :class="isDark ? 'text-slate-400' : 'text-slate-500'">
-          Theo dõi lịch trình vận đơn Viettel Post, hành trình vận chuyển thời gian thực và quản lý thu hộ COD
+          Theo dõi hành trình vận đơn Viettel Post, đồng bộ trạng thái webhook thời gian thực và quản lý COD
         </p>
       </div>
 
       <div class="flex gap-2">
-        <!-- Nút Test Webhook simulation -->
         <v-btn
           color="blue-grey-darken-1"
           prepend-icon="mdi-robot-confused"
           variant="outlined"
           @click="openSimulationDialog"
-          class="font-bold"
+          class="font-bold rounded-xl text-xs"
         >
           Mô phỏng Webhook VTP
         </v-btn>
@@ -29,7 +28,7 @@
     </div>
 
     <!-- Bento Grid KPI Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div 
         v-for="card in kpiCards" 
         :key="card.title"
@@ -50,244 +49,263 @@
       </div>
     </div>
 
-    <!-- Main List & Search -->
-    <v-card class="rounded-[20px] border-0" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-100 shadow-sm'">
-      <v-card-text class="pa-4">
-        <!-- Filters Toolbar -->
-        <div class="flex flex-col md:flex-row gap-4 justify-between items-center mb-4">
-          <div class="w-full md:w-80">
-            <v-text-field
-              v-model="search"
-              placeholder="Tìm kiếm mã vận đơn, mã đơn..."
-              prepend-inner-icon="mdi-magnify"
-              hide-details
-              density="compact"
-              variant="outlined"
-              color="emerald-600"
-              class="rounded-xl"
-            />
-          </div>
-          <div class="flex gap-2 w-full md:w-auto">
-            <v-select
-              v-model="statusFilter"
-              :items="statusOptions"
-              label="Trạng thái vận chuyển"
-              hide-details
-              density="compact"
-              variant="outlined"
-              color="emerald-600"
-              style="width: 200px;"
-            />
-          </div>
+    <!-- Split Layout Panels -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <!-- Left Panel: Shipments List Table (70% or 65% width) -->
+      <div class="lg:col-span-8 space-y-4">
+        <v-card class="rounded-[20px] border-0" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-100 shadow-sm'">
+          <v-card-text class="pa-4">
+            <!-- Filters Toolbar -->
+            <div class="flex flex-col md:flex-row gap-4 justify-between items-center mb-4">
+              <div class="w-full md:w-80">
+                <v-text-field
+                  v-model="search"
+                  placeholder="Tìm theo mã vận đơn, mã đơn..."
+                  prepend-inner-icon="mdi-magnify"
+                  hide-details
+                  density="compact"
+                  variant="outlined"
+                  color="emerald-600"
+                  class="rounded-xl"
+                />
+              </div>
+              <div class="flex gap-2 w-full md:w-auto">
+                <v-select
+                  v-model="statusFilter"
+                  :items="statusOptions"
+                  label="Trạng thái giao"
+                  hide-details
+                  density="compact"
+                  variant="outlined"
+                  color="emerald-600"
+                  style="width: 200px;"
+                />
+              </div>
+            </div>
+
+            <!-- Shipments Data Table -->
+            <v-data-table
+              :headers="headers"
+              :items="filteredShipments"
+              :loading="loading"
+              v-model:selected="selectedShipments"
+              select-strategy="single"
+              hover
+              class="rounded-xl text-xs"
+              @click:row="handleRowClicked"
+            >
+              <!-- Waybill tracking code -->
+              <template #item.trackingNumber="{ item }">
+                <span class="font-mono font-bold text-slate-800 dark:text-slate-100">
+                  {{ item.trackingNumber || 'CHƯA CÓ (PENDING)' }}
+                </span>
+              </template>
+
+              <!-- Order Reference -->
+              <template #item.orderCode="{ item }">
+                <span class="font-mono text-xs text-slate-500">
+                  {{ item.order?.orderCode || '—' }}
+                </span>
+              </template>
+
+              <!-- Customer details -->
+              <template #item.receiver="{ item }">
+                <div class="flex flex-col" v-if="item.order">
+                  <span class="font-bold text-slate-800 dark:text-slate-200">
+                    {{ getAddressDetails(item.order.shippingAddressJson).receiverName }}
+                  </span>
+                  <span class="text-[11px] text-slate-400">
+                    {{ getAddressDetails(item.order.shippingAddressJson).receiverPhone }}
+                  </span>
+                </div>
+                <span v-else>—</span>
+              </template>
+
+              <!-- COD Amount -->
+              <template #item.codAmount="{ item }">
+                <span class="font-bold">
+                  {{ formatCurrency(item.codAmount) }}
+                </span>
+              </template>
+
+              <!-- Delivery status -->
+              <template #item.status="{ item }">
+                <v-chip
+                  :color="shipmentStatusColor(item.status)"
+                  size="small"
+                  variant="tonal"
+                  class="font-bold"
+                >
+                  {{ shipmentStatusLabel(item.status) }}
+                </v-chip>
+              </template>
+
+              <!-- PDF label link -->
+              <template #item.labelPdfUrl="{ item }">
+                <a 
+                  v-if="item.labelPdfUrl" 
+                  :href="item.labelPdfUrl" 
+                  target="_blank" 
+                  class="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs font-semibold"
+                  @click.stop
+                >
+                  <v-icon size="14">mdi-file-pdf-box</v-icon> PDF
+                </a>
+                <span v-else class="text-xs text-slate-400">—</span>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </div>
+
+      <!-- Right Panel: Live Shipment Tracking Details (35% width) -->
+      <div class="lg:col-span-4 space-y-4">
+        <!-- Loading state -->
+        <div v-if="detailsLoading" class="p-8 rounded-[20px] border flex flex-col items-center justify-center min-h-[400px]" :class="isDark ? 'bg-[#112240] border-slate-800' : 'bg-white border-slate-200'">
+          <v-progress-circular indeterminate color="emerald-600" class="mb-4" />
+          <span class="text-xs text-slate-400">Đang tải lịch trình vận đơn...</span>
         </div>
 
-        <!-- Shipments Data Table -->
-        <v-data-table
-          :headers="headers"
-          :items="filteredShipments"
-          :loading="loading"
-          hover
-          class="rounded-xl"
-        >
-          <!-- Waybill tracking code -->
-          <template #item.trackingNumber="{ item }">
-            <span class="font-mono font-bold text-slate-800 dark:text-slate-100">
-              {{ item.trackingNumber || 'CHƯA CÓ (PENDING)' }}
-            </span>
-          </template>
-
-          <!-- Order Reference -->
-          <template #item.orderCode="{ item }">
-            <span class="font-mono text-xs text-slate-500">
-              {{ item.order?.orderCode || '—' }}
-            </span>
-          </template>
-
-          <!-- Customer details -->
-          <template #item.receiver="{ item }">
-            <div class="flex flex-col" v-if="item.order">
-              <span class="font-bold text-slate-800 dark:text-slate-200">
-                {{ getAddressDetails(item.order.shippingAddressJson).receiverName }}
-              </span>
-              <span class="text-[11px] text-slate-400">
-                {{ getAddressDetails(item.order.shippingAddressJson).receiverPhone }}
-              </span>
-            </div>
-            <span v-else>—</span>
-          </template>
-
-          <!-- COD Amount -->
-          <template #item.codAmount="{ item }">
-            <span class="font-bold">
-              {{ formatCurrency(item.codAmount) }}
-            </span>
-          </template>
-
-          <!-- Delivery status -->
-          <template #item.status="{ item }">
-            <v-chip
-              :color="shipmentStatusColor(item.status)"
-              size="small"
-              variant="tonal"
-              class="font-bold"
-            >
-              {{ shipmentStatusLabel(item.status) }}
-            </v-chip>
-          </template>
-
-          <!-- PDF label link -->
-          <template #item.labelPdfUrl="{ item }">
-            <a 
-              v-if="item.labelPdfUrl" 
-              :href="item.labelPdfUrl" 
-              target="_blank" 
-              class="text-blue-500 hover:text-blue-700 flex items-center gap-1 text-xs font-semibold"
-              @click.stop
-            >
-              <v-icon size="14">mdi-file-pdf-box</v-icon> Nhãn in PDF
-            </a>
-            <span v-else class="text-xs text-slate-400">—</span>
-          </template>
-
-          <!-- Action menu -->
-          <template #item.actions="{ item }">
-            <v-btn
-              icon="mdi-text-search-outline"
-              variant="text"
-              size="small"
-              color="emerald-600"
-              @click.stop="openTrackingDetails(item)"
-              title="Tra cứu lịch trình"
-            />
-          </template>
-        </v-data-table>
-      </v-card-text>
-    </v-card>
-
-    <!-- Dialog: Chi tiết lịch trình / tracking logs -->
-    <v-dialog v-model="detailsDialog" max-width="650px">
-      <v-card class="rounded-[20px]" v-if="selectedShipmentDetails">
-        <v-card-title class="bg-emerald-600 text-white py-4 px-6 flex items-center justify-between">
-          <span class="text-base font-bold">LỊCH TRÌNH VẬN ĐƠN: {{ selectedShipmentDetails.trackingNumber || 'CHỜ TẠO' }}</span>
-          <v-icon color="white" class="cursor-pointer" @click="detailsDialog = false">mdi-close</v-icon>
-        </v-card-title>
-
-        <v-card-text class="pa-6">
-          <div class="space-y-6">
-            
-            <!-- Thông tin người nhận và nhà vận chuyển -->
-            <div class="grid grid-cols-2 gap-4 text-sm bg-slate-50 dark:bg-slate-900 pa-4 rounded-xl">
-              <div>
-                <div class="text-slate-400 text-xs font-bold uppercase">Người nhận</div>
-                <div class="font-bold text-slate-800 dark:text-slate-100 mt-1">
-                  {{ getAddressDetails(selectedShipmentDetails.order?.shippingAddressJson).receiverName }}
-                </div>
-                <div class="text-slate-500 text-xs mt-0.5">
-                  {{ getAddressDetails(selectedShipmentDetails.order?.shippingAddressJson).receiverPhone }}
-                </div>
-                <div class="text-slate-500 text-xs mt-1">
-                  {{ getAddressText(selectedShipmentDetails.order?.shippingAddressJson) }}
-                </div>
-              </div>
-
-              <div>
-                <div class="text-slate-400 text-xs font-bold uppercase">Thông tin Logistics</div>
-                <div class="mt-1">
-                  <strong>Thu hộ COD:</strong> <span class="text-emerald-600 font-bold">{{ formatCurrency(selectedShipmentDetails.codAmount) }}</span>
-                </div>
-                <div>
-                  <strong>Trọng lượng:</strong> {{ selectedShipmentDetails.weightGrams }}g
-                </div>
-                <div v-if="selectedShipmentDetails.estimatedDelivery">
-                  <strong>Giao dự kiến:</strong> {{ new Date(selectedShipmentDetails.estimatedDelivery).toLocaleDateString('vi-VN') }}
-                </div>
-                <div v-if="selectedShipmentDetails.labelPdfUrl" class="mt-2">
-                  <a :href="selectedShipmentDetails.labelPdfUrl" target="_blank" class="text-blue-500 font-bold hover:underline flex items-center gap-1 text-xs">
-                    <v-icon size="14">mdi-printer</v-icon> Xem nhãn in (PDF)
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            <!-- Hành trình vận chuyển (Timeline) -->
+        <!-- Selected Shipment details -->
+        <div v-else-if="selectedShipment" class="rounded-[20px] border p-5 space-y-5" :class="isDark ? 'bg-[#112240] border-slate-800' : 'bg-white border-slate-200 shadow-sm'">
+          <div class="flex items-center justify-between border-b pb-3 dark:border-slate-800">
             <div>
-              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Hành trình chi tiết (Realtime)</h4>
-              
-              <div v-if="selectedShipmentDetails.trackingLogs && selectedShipmentDetails.trackingLogs.length > 0" class="space-y-4 relative pl-4 border-l border-slate-200 dark:border-slate-700 ml-2">
+              <span class="text-[10px] font-bold text-slate-400 uppercase">Chi tiết vận đơn</span>
+              <h2 class="text-base font-mono font-bold text-slate-800 dark:text-slate-100 mt-0.5">
+                {{ selectedShipment.trackingNumber || 'CHỜ TẠO' }}
+              </h2>
+            </div>
+            <v-chip :color="shipmentStatusColor(selectedShipment.status)" size="small" variant="flat" class="font-bold text-white text-[10px]">
+              {{ shipmentStatusLabel(selectedShipment.status) }}
+            </v-chip>
+          </div>
+
+          <!-- Recipient & Logistics info -->
+          <div class="space-y-3 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl text-xs">
+            <div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase">Người nhận</div>
+              <div class="font-bold text-slate-800 dark:text-slate-100 mt-1">
+                {{ getAddressDetails(selectedShipment.order?.shippingAddressJson).receiverName }}
+              </div>
+              <div class="text-slate-500 mt-0.5">
+                SĐT: {{ getAddressDetails(selectedShipment.order?.shippingAddressJson).receiverPhone }}
+              </div>
+              <div class="text-slate-400 mt-1 italic">
+                ĐC: {{ getAddressText(selectedShipment.order?.shippingAddressJson) }}
+              </div>
+            </div>
+
+            <v-divider class="my-2 dark:border-slate-800" />
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <span class="text-slate-400">COD thu hộ:</span>
+                <div class="font-bold text-emerald-600 mt-0.5">{{ formatCurrency(selectedShipment.codAmount) }}</div>
+              </div>
+              <div>
+                <span class="text-slate-400">Trọng lượng:</span>
+                <div class="font-bold mt-0.5">{{ selectedShipment.weightGrams }}g</div>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center pt-2" v-if="selectedShipment.estimatedDelivery">
+              <span class="text-slate-400">Dự kiến giao:</span>
+              <span class="font-bold text-slate-800 dark:text-slate-200">
+                {{ new Date(selectedShipment.estimatedDelivery).toLocaleDateString('vi-VN') }}
+              </span>
+            </div>
+
+            <div v-if="selectedShipment.labelPdfUrl" class="pt-2">
+              <a :href="selectedShipment.labelPdfUrl" target="_blank" class="w-full flex items-center justify-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg py-2 font-bold transition-all text-xs">
+                <v-icon size="14">mdi-printer</v-icon> Xem nhãn in (PDF)
+              </a>
+            </div>
+          </div>
+
+          <!-- Real-time timeline tracker -->
+          <div class="space-y-4">
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b pb-2 dark:border-slate-800">Hành trình chi tiết (Realtime)</h4>
+
+            <div v-if="selectedShipment.trackingLogs && selectedShipment.trackingLogs.length > 0" class="space-y-4 relative pl-4 border-l border-slate-200 dark:border-slate-800 ml-2 py-1">
+              <div 
+                v-for="(log, idx) in selectedShipment.trackingLogs" 
+                :key="log.id"
+                class="relative text-xs"
+              >
+                <!-- Dot -->
                 <div 
-                  v-for="(log, idx) in selectedShipmentDetails.trackingLogs" 
-                  :key="log.id"
-                  class="relative"
-                >
-                  <!-- Timeline dot -->
-                  <div 
-                    class="absolute -left-[21px] top-1 h-3 w-3 rounded-full border-2 bg-white"
-                    :class="idx === 0 ? 'border-emerald-600 bg-emerald-100 animate-pulse' : 'border-slate-300 bg-white dark:bg-slate-800'"
-                  ></div>
-                  
-                  <div>
-                    <div class="text-xs font-bold" :class="idx === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'">
-                      {{ log.activity }}
-                    </div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">
-                      {{ formatDateTime(log.occurredAt) }}
-                    </div>
-                    <div v-if="log.location" class="text-[11px] text-slate-500 italic">
-                      Vị trí: {{ log.location }}
-                    </div>
+                  class="absolute -left-[21px] top-0.5 h-3 w-3 rounded-full border-2 bg-white"
+                  :class="idx === 0 ? 'border-emerald-600 bg-emerald-100 animate-pulse' : 'border-slate-300 bg-white dark:bg-[#112240]'"
+                ></div>
+                
+                <div>
+                  <div class="font-bold" :class="idx === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'">
+                    {{ log.activity }}
+                  </div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">
+                    {{ formatDateTime(log.occurredAt) }}
+                  </div>
+                  <div v-if="log.location" class="text-[10px] text-slate-500 italic mt-0.5">
+                    Vị trí: {{ log.location }}
                   </div>
                 </div>
               </div>
-              <div v-else class="text-center py-6 text-slate-400 text-sm">
-                Chưa có hành trình vận chuyển được ghi nhận.
-              </div>
             </div>
-
-            <!-- Lịch sử đổi trạng thái của hệ thống -->
-            <div>
-              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Lịch sử trạng thái hệ thống</h4>
-              <div class="border rounded-xl overflow-hidden text-xs">
-                <table class="w-full text-left border-collapse">
-                  <thead>
-                    <tr class="bg-slate-50 dark:bg-slate-900 border-b">
-                      <th class="p-2.5 font-bold">Từ trạng thái</th>
-                      <th class="p-2.5 font-bold">Sang trạng thái</th>
-                      <th class="p-2.5 font-bold">Ghi chú hệ thống</th>
-                      <th class="p-2.5 font-bold text-right">Thời gian</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="h in selectedShipmentDetails.statusHistory" :key="h.id" class="border-b last:border-b-0">
-                      <td class="p-2.5 font-mono text-slate-500">{{ h.fromStatus }}</td>
-                      <td class="p-2.5 font-mono font-bold text-slate-800 dark:text-slate-100">{{ h.toStatus }}</td>
-                      <td class="p-2.5 text-slate-600">{{ h.notes }}</td>
-                      <td class="p-2.5 text-right text-slate-400">{{ formatDateTime(h.createdAt) }}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+            <div v-else class="text-center py-6 text-slate-400 text-xs italic">
+              Chưa có hành trình vận chuyển được ghi nhận.
             </div>
-
           </div>
-        </v-card-text>
 
-        <v-card-actions class="pa-4 justify-end border-t">
-          <v-btn color="slate-600" variant="flat" class="font-bold text-white" @click="detailsDialog = false">Đóng</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+          <!-- Status history table -->
+          <div class="space-y-2">
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b pb-2 dark:border-slate-800">Lịch sử hệ thống</h4>
+            
+            <div class="border dark:border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+              <table class="w-full text-left text-[11px] border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800 text-slate-400">
+                    <th class="p-2 font-bold">Từ -> Sang</th>
+                    <th class="p-2 font-bold text-right">Thời gian</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="h in selectedShipment.statusHistory" :key="h.id" class="border-b last:border-b-0 dark:border-slate-800 hover:bg-slate-50/50">
+                    <td class="p-2">
+                      <span class="font-mono text-slate-400">{{ h.fromStatus }}</span>
+                      <v-icon size="10" color="slate-400" class="mx-1">mdi-arrow-right</v-icon>
+                      <span class="font-bold text-slate-700 dark:text-slate-200">{{ h.toStatus }}</span>
+                      <div class="text-[10px] text-slate-400 mt-0.5">{{ h.notes }}</div>
+                    </td>
+                    <td class="p-2 text-right text-slate-400 align-top">
+                      {{ formatDateTime(h.createdAt) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
-    <!-- Dialog: Mô phỏng Webhook Viettel Post (Dành cho Dev/Demo) -->
+        <!-- Placeholder state -->
+        <div v-else class="p-8 rounded-[20px] border flex flex-col items-center justify-center min-h-[400px] text-center" :class="isDark ? 'bg-[#112240] border-slate-800' : 'bg-white border-slate-200'">
+          <v-icon size="40" color="slate-400" class="mb-3">mdi-truck-cargo-container</v-icon>
+          <h3 class="text-sm font-bold text-slate-600 dark:text-slate-300">Chọn vận đơn</h3>
+          <p class="text-xs text-slate-400 mt-1 max-w-[200px] mx-auto">Chọn một dòng vận đơn bên trái để theo dõi lịch trình chi tiết</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dialog: Mô phỏng Webhook Viettel Post (Dev/Demo tool) -->
     <v-dialog v-model="simulationDialog" max-width="500px">
-      <v-card class="rounded-[20px]">
-        <v-card-title class="bg-slate-800 text-white py-4 px-6 flex items-center justify-between">
+      <v-card class="rounded-[20px] border border-slate-200 dark:border-slate-800" :class="isDark ? 'bg-[#112240]' : 'bg-white'">
+        <v-card-title class="bg-slate-800 dark:bg-slate-900 text-white py-4 px-6 flex items-center justify-between">
           <span class="text-base font-bold">MÔ PHỎNG WEBHOOK VIETTEL POST</span>
           <v-icon color="white" class="cursor-pointer" @click="simulationDialog = false">mdi-close</v-icon>
         </v-card-title>
 
         <v-card-text class="pa-6">
-          <div class="space-y-4">
-            <p class="text-xs text-slate-500">
+          <div class="space-y-4 text-xs">
+            <p class="text-slate-400">
               Công cụ mô phỏng cách Viettel Post gửi webhook cập nhật trạng thái về ZaloCRM. Giúp kiểm tra tính chính xác của P1 Webhook Security và DB sync.
             </p>
 
@@ -300,7 +318,7 @@
               variant="outlined"
               color="emerald-600"
               density="comfortable"
-              :rules="[v => !!v || 'Bắt buộc']"
+              class="rounded-xl"
             />
 
             <v-select
@@ -312,6 +330,7 @@
               variant="outlined"
               color="emerald-600"
               density="comfortable"
+              class="rounded-xl"
             />
 
             <v-text-field
@@ -321,27 +340,29 @@
               variant="outlined"
               color="emerald-600"
               density="comfortable"
+              class="rounded-xl"
             />
 
             <v-text-field
               v-model="simData.secret"
-              label="Webhook Secret Key (X-Viettel-Secret Header)"
+              label="Webhook Secret Key"
               placeholder="Nhập secret key để xác thực"
               variant="outlined"
               color="emerald-600"
               density="comfortable"
+              class="rounded-xl"
               hint="Phải khớp với Secret Key cấu hình để xác thực webhook thành công"
               persistent-hint
             />
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-4 justify-end">
-          <v-btn variant="outlined" color="slate-500" @click="simulationDialog = false">Đóng</v-btn>
+        <v-card-actions class="pa-4 justify-end border-t dark:border-slate-800">
+          <v-btn variant="outlined" color="slate-400" @click="simulationDialog = false" class="font-bold text-xs">Đóng</v-btn>
           <v-btn
             color="emerald-600"
             variant="flat"
-            class="text-white font-bold"
+            class="text-white font-bold text-xs"
             :loading="simulating"
             :disabled="!simData.shipmentId"
             @click="triggerWebhookSimulation"
@@ -376,18 +397,19 @@ const loading = ref(false);
 const search = ref('');
 const statusFilter = ref('ALL');
 
-// Dialog Detail
-const detailsDialog = ref(false);
-const selectedShipmentDetails = ref<any | null>(null);
+// Selection state for double panel layout
+const selectedShipments = ref<any[]>([]);
+const selectedShipment = ref<any | null>(null);
+const detailsLoading = ref(false);
 
 // Webhook simulation state
 const simulationDialog = ref(false);
 const simulating = ref(false);
 const simData = reactive({
   shipmentId: '',
-  statusCode: 501, // VTP SHIPPING code (Ví dụ: 501 là đang giao hàng)
+  statusCode: 501, 
   location: 'Bưu cục Khai Thác Cầu Giấy',
-  secret: 'VTP_WEBHOOK_SECRET_2026', // Khớp với mock adapter secret
+  secret: 'VTP_WEBHOOK_SECRET_2026', 
 });
 
 const snack = ref({ show: false, text: '', color: 'success' });
@@ -404,7 +426,6 @@ const headers = [
   { title: 'Tiền COD', key: 'codAmount', sortable: true, align: 'end' as const },
   { title: 'Trạng Thái Vận Chuyển', key: 'status', sortable: true },
   { title: 'Nhãn In PDF', key: 'labelPdfUrl', sortable: false },
-  { title: 'Tra Cứu', key: 'actions', sortable: false, align: 'center' as const },
 ];
 
 const statusOptions = [
@@ -505,6 +526,11 @@ async function fetchShipments() {
   try {
     const res = await api.get('/logistics/shipments');
     shipments.value = res.data.shipments ?? [];
+    
+    // Auto-select first shipment on mount if list is not empty
+    if (shipments.value.length > 0 && !selectedShipment.value) {
+      loadShipmentDetails(shipments.value[0].id);
+    }
   } catch (err: any) {
     console.error('Failed to fetch shipments:', err);
     showSnack('Không thể tải danh sách vận đơn', 'error');
@@ -513,15 +539,23 @@ async function fetchShipments() {
   }
 }
 
-async function openTrackingDetails(shipment: any) {
+// Row click handler for table
+function handleRowClicked(_event: Event, { item }: { item: any }) {
+  if (item && item.id) {
+    loadShipmentDetails(item.id);
+  }
+}
+
+async function loadShipmentDetails(id: string) {
+  detailsLoading.value = true;
   try {
-    // Fetch deep details including trackingLogs and statusHistory
-    const res = await api.get(`/logistics/shipments/${shipment.id}`);
-    selectedShipmentDetails.value = res.data;
-    detailsDialog.value = true;
+    const res = await api.get(`/logistics/shipments/${id}`);
+    selectedShipment.value = res.data;
   } catch (err: any) {
     console.error('Failed to load shipment details:', err);
     showSnack('Không thể tải chi tiết vận đơn', 'error');
+  } finally {
+    detailsLoading.value = false;
   }
 }
 
@@ -541,15 +575,6 @@ async function triggerWebhookSimulation() {
     const targetShipment = shipments.value.find(s => s.id === simData.shipmentId);
     if (!targetShipment || !targetShipment.trackingNumber) return;
 
-    // Webhook endpoint: POST /api/v1/logistics/webhook/viettelpost/:orgId
-    // Payload mapping:
-    // {
-    //   "ORDER_NUMBER": trackingNumber,
-    //   "ORDER_STATUS": statusCode,
-    //   "STATUS_NAME": "Cập nhật qua webhook mô phỏng",
-    //   "LOC_NAME": location,
-    //   "NOTE": "Simulated Webhook Update"
-    // }
     const orgId = targetShipment.order?.orgId;
     if (!orgId) {
       showSnack('Không tìm thấy Org ID của vận đơn này', 'error');
@@ -572,9 +597,13 @@ async function triggerWebhookSimulation() {
 
     showSnack('Đã gửi Webhook thành công! Trạng thái vận đơn đang được đồng bộ ngầm.');
     simulationDialog.value = false;
-    // Reload database states
-    setTimeout(() => {
-      fetchShipments();
+    
+    // Reload database states and refresh details
+    setTimeout(async () => {
+      await fetchShipments();
+      if (selectedShipment.value && selectedShipment.value.id === simData.shipmentId) {
+        await loadShipmentDetails(simData.shipmentId);
+      }
     }, 1000);
   } catch (err: any) {
     console.error('Failed to trigger webhook simulation:', err);

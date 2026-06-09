@@ -27,6 +27,7 @@ export function useChatContactPanel(
     email: '',
     source: null as string | null,
     status: null as string | null,
+    assignedUserId: null as string | null,
     nextAppointmentDate: '',
     firstContactDate: '',
     tags: [] as string[],
@@ -39,6 +40,7 @@ export function useChatContactPanel(
     form.email = c.email ?? '';
     form.source = c.source ?? null;
     form.status = c.status ?? null;
+    form.assignedUserId = c.assignedUserId ?? null;
     form.nextAppointmentDate = c.nextAppointment
       ? new Date(c.nextAppointment).toISOString().split('T')[0]
       : '';
@@ -88,6 +90,7 @@ export function useChatContactPanel(
       email: form.email || null,
       source: form.source || null,
       status: form.status || null,
+      assignedUserId: form.assignedUserId || null,
       nextAppointment: form.nextAppointmentDate
         ? new Date(form.nextAppointmentDate + 'T00:00:00').toISOString()
         : null,

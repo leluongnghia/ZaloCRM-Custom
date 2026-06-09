@@ -1,7 +1,7 @@
 <template>
-  <div>
+  <div class="space-y-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8 mt-2">
+    <div class="flex items-center justify-between mb-2 mt-2">
       <div>
         <h1 class="text-3xl font-bold tracking-tight flex items-center gap-3" :class="isDark ? 'text-slate-100' : 'text-slate-800'">
           <div class="p-2 rounded-xl" :class="isDark ? 'bg-[#1D2D50]' : 'bg-emerald-50'">
@@ -10,19 +10,37 @@
           Quản lý đơn hàng (OMS)
         </h1>
         <p class="text-[15px] mt-2 font-medium" :class="isDark ? 'text-slate-400' : 'text-slate-500'">
-          Quản lý đơn hàng bán lẻ, tạo vận đơn Viettel Post và theo dõi trạng thái đồng bộ thời gian thực
+          Phân phối đơn hàng bán lẻ, kéo thả Kanban, đồng bộ vận đơn Viettel Post thời gian thực
         </p>
       </div>
 
-      <div>
-        <v-btn color="emerald-600" prepend-icon="mdi-plus" @click="openCreateOrder" class="font-bold text-white">
+      <div class="flex items-center gap-3">
+        <!-- View mode toggles -->
+        <div class="flex bg-slate-100 dark:bg-[#112240] p-1 rounded-xl border border-slate-200 dark:border-slate-800">
+          <button 
+            @click="viewMode = 'kanban'" 
+            class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all"
+            :class="viewMode === 'kanban' ? 'bg-white dark:bg-emerald-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-200'"
+          >
+            <v-icon size="16">mdi-kanban</v-icon> Kanban
+          </button>
+          <button 
+            @click="viewMode = 'table'" 
+            class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all"
+            :class="viewMode === 'table' ? 'bg-white dark:bg-emerald-600 shadow-sm text-slate-800 dark:text-white' : 'text-slate-400 hover:text-slate-200'"
+          >
+            <v-icon size="16">mdi-table-large</v-icon> Bảng dữ liệu
+          </button>
+        </div>
+
+        <v-btn color="emerald-600" prepend-icon="mdi-plus" @click="createOrderDialog = true" class="font-bold text-white rounded-xl">
           Tạo đơn hàng mới
         </v-btn>
       </div>
     </div>
 
-    <!-- Filters & Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <!-- Bento Grid Stats Overview -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
       <div 
         v-for="stat in orderStats" 
         :key="stat.title"
@@ -40,44 +58,162 @@
       </div>
     </div>
 
-    <!-- Main List Card -->
-    <v-card class="rounded-[20px] border-0" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-100 shadow-sm'">
-      <v-card-text class="pa-4">
-        <!-- List Toolbar -->
-        <div class="flex flex-col md:flex-row gap-4 justify-between items-center mb-4">
-          <div class="w-full md:w-80">
-            <v-text-field
-              v-model="search"
-              placeholder="Tìm kiếm mã đơn, tên khách hàng..."
-              prepend-inner-icon="mdi-magnify"
-              hide-details
-              density="compact"
-              variant="outlined"
-              color="emerald-600"
-              class="rounded-xl"
-            />
+    <!-- Filters & Search Toolbar -->
+    <div class="p-4 rounded-[20px] border flex flex-col md:flex-row gap-4 justify-between items-center" :class="isDark ? 'bg-[#112240] border-slate-800' : 'bg-white border-slate-100 shadow-sm'">
+      <div class="w-full md:w-80">
+        <v-text-field
+          v-model="search"
+          placeholder="Tìm theo mã đơn, tên khách..."
+          prepend-inner-icon="mdi-magnify"
+          hide-details
+          density="compact"
+          variant="outlined"
+          color="emerald-600"
+          class="rounded-xl"
+        />
+      </div>
+      <div class="flex gap-2 w-full md:w-auto">
+        <v-select
+          v-model="statusFilter"
+          :items="statusOptions"
+          label="Lọc trạng thái"
+          hide-details
+          density="compact"
+          variant="outlined"
+          color="emerald-600"
+          style="width: 180px;"
+        />
+      </div>
+    </div>
+
+    <!-- KANBAN MODE -->
+    <div v-if="viewMode === 'kanban'" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-start pb-8">
+      <div 
+        v-for="col in kanbanColumns" 
+        :key="col.status"
+        class="rounded-[20px] p-4 flex flex-col min-h-[550px] transition-all duration-200 border"
+        :class="[
+          isDark ? 'bg-[#112240]/40 border-slate-800/60' : 'bg-slate-50 border-slate-200/80',
+          dragOverStatus === col.status ? 'ring-2 ring-emerald-500/30 border-emerald-500 bg-emerald-500/5' : ''
+        ]"
+        @dragover.prevent="onDragOver(col.status)"
+        @dragleave="onDragLeave"
+        @drop="onDrop(col.status, $event)"
+      >
+        <!-- Column Header -->
+        <div class="flex justify-between items-center mb-4 pb-2 border-b dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full" :class="col.dotClass"></span>
+            <h3 class="font-bold text-sm text-slate-700 dark:text-slate-200">{{ col.title }}</h3>
           </div>
-          <div class="flex gap-2 w-full md:w-auto">
-            <v-select
-              v-model="statusFilter"
-              :items="statusOptions"
-              label="Trạng thái đơn"
-              hide-details
-              density="compact"
-              variant="outlined"
-              color="emerald-600"
-              style="width: 160px;"
-            />
-          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-400">
+            {{ getOrdersByStatus(col.status).length }}
+          </span>
         </div>
 
-        <!-- Orders Table -->
+        <!-- Column Cards Container -->
+        <div class="space-y-3 flex-grow overflow-y-auto max-h-[500px] pr-1">
+          <div 
+            v-for="order in getOrdersByStatus(col.status)" 
+            :key="order.id"
+            class="p-4 rounded-xl border bg-white dark:bg-[#112240] hover:shadow-md cursor-grab active:cursor-grabbing transition-all duration-200 select-none"
+            :class="isDark ? 'border-slate-800' : 'border-slate-200'"
+            draggable="true"
+            @dragstart="onDragStart(order, $event)"
+          >
+            <!-- Card Header -->
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                {{ order.orderCode }}
+              </span>
+              <span class="text-[10px] text-slate-400 font-medium">
+                {{ timeAgo(order.createdAt) }}
+              </span>
+            </div>
+
+            <!-- Customer info -->
+            <div class="mb-3">
+              <div class="font-bold text-xs text-slate-800 dark:text-slate-200">
+                {{ order.customer?.fullName || 'Khách vãng lai' }}
+              </div>
+              <div class="text-[10px] text-slate-400">{{ order.customer?.phone || '' }}</div>
+            </div>
+
+            <!-- Total Price -->
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-[10px] text-slate-400 uppercase font-bold">Tổng thanh toán:</span>
+              <span class="text-xs font-bold text-slate-800 dark:text-slate-100">
+                {{ formatCurrency(order.totalAmount) }}
+              </span>
+            </div>
+
+            <v-divider class="my-2 dark:border-slate-800" />
+
+            <!-- Logistics Waybill Area -->
+            <div class="flex items-center justify-between mt-2">
+              <!-- Waybill Info -->
+              <div v-if="order.shipment">
+                <div class="flex items-center gap-1">
+                  <v-icon size="14" color="emerald-600">mdi-truck-delivery-outline</v-icon>
+                  <span class="font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    {{ order.shipment.trackingNumber || 'Đang tạo...' }}
+                  </span>
+                </div>
+                <div class="text-[9px] font-bold mt-0.5" :class="getShipmentStatusTextClass(order.shipment.status)">
+                  {{ shipmentStatusLabel(order.shipment.status) }}
+                </div>
+              </div>
+              <div v-else>
+                <v-btn
+                  color="emerald-600"
+                  size="x-small"
+                  variant="flat"
+                  class="font-bold text-white rounded-lg px-2"
+                  prepend-icon="mdi-truck-fast-outline"
+                  @click.stop="openCreateShipment(order)"
+                >
+                  Tạo vận đơn
+                </v-btn>
+              </div>
+
+              <!-- Quick action triggers -->
+              <div class="flex gap-1">
+                <v-btn
+                  icon="mdi-eye-outline"
+                  variant="text"
+                  size="x-small"
+                  color="slate-400"
+                  @click.stop="viewOrderDetails(order)"
+                />
+                <v-btn
+                  v-if="order.status !== 'CANCELLED' && order.status !== 'COMPLETED'"
+                  icon="mdi-check"
+                  variant="text"
+                  size="x-small"
+                  color="emerald-600"
+                  @click.stop="updateOrderStatus(order.id, 'COMPLETED')"
+                  title="Hoàn thành đơn"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div v-if="getOrdersByStatus(col.status).length === 0" class="text-center py-8 text-xs text-slate-400 italic">
+            Không có đơn hàng
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE MODE -->
+    <v-card v-else class="rounded-[20px] border-0" :class="isDark ? 'bg-[#112240] border-[#1D2D50]' : 'bg-white border-slate-100 shadow-sm'">
+      <v-card-text class="pa-4">
         <v-data-table
           :headers="headers"
           :items="filteredOrders"
           :loading="loading"
           hover
-          class="rounded-xl"
+          class="rounded-xl text-xs"
         >
           <!-- Order Code -->
           <template #item.orderCode="{ item }">
@@ -120,14 +256,13 @@
           <!-- Logistics Waybill -->
           <template #item.shipment="{ item }">
             <div v-if="item.shipment" class="flex flex-col gap-1">
-              <!-- Pending waybill retry mode -->
               <v-chip
                 v-if="item.shipment.status === 'PENDING_WAYBILL'"
                 color="orange-darken-1"
                 size="small"
                 variant="flat"
                 class="font-bold cursor-pointer text-white"
-                prepend-icon="mdi-sync animate-spin"
+                prepend-icon="mdi-sync"
                 @click.stop="retryShipment(item)"
               >
                 Chờ tạo vận đơn
@@ -152,7 +287,7 @@
                 color="emerald-600"
                 size="x-small"
                 variant="flat"
-                class="font-bold text-white"
+                class="font-bold text-white rounded-lg"
                 prepend-icon="mdi-truck-fast-outline"
                 @click.stop="openCreateShipment(item)"
               >
@@ -163,309 +298,73 @@
 
           <!-- Action menu -->
           <template #item.actions="{ item }">
-            <v-btn
-              icon="mdi-eye-outline"
-              variant="text"
-              size="small"
-              color="slate-500"
-              @click.stop="viewOrderDetails(item)"
-            />
+            <div class="flex justify-center gap-1">
+              <v-btn
+                icon="mdi-eye-outline"
+                variant="text"
+                size="small"
+                color="slate-500"
+                @click.stop="viewOrderDetails(item)"
+              />
+              <v-btn
+                v-if="item.status !== 'CANCELLED' && item.status !== 'COMPLETED'"
+                icon="mdi-check"
+                variant="text"
+                size="small"
+                color="emerald-600"
+                @click.stop="updateOrderStatus(item.id, 'COMPLETED')"
+              />
+              <v-btn
+                v-if="item.status !== 'CANCELLED' && item.status !== 'COMPLETED'"
+                icon="mdi-close"
+                variant="text"
+                size="small"
+                color="red"
+                @click.stop="updateOrderStatus(item.id, 'CANCELLED')"
+              />
+            </div>
           </template>
         </v-data-table>
       </v-card-text>
     </v-card>
 
-    <!-- Dialog: Tạo đơn hàng mới -->
-    <v-dialog v-model="createOrderDialog" max-width="850px" persistent>
-      <v-card class="rounded-[20px] overflow-hidden">
-        <v-card-title class="bg-emerald-600 text-white py-4 px-6 flex items-center justify-between">
-          <span class="text-lg font-bold">TẠO ĐƠN HÀNG MỚI & THÔNG TIN SHIP</span>
-          <v-icon color="white" class="cursor-pointer" @click="createOrderDialog = false">mdi-close</v-icon>
-        </v-card-title>
-
-        <v-card-text class="pa-6 bg-slate-50 dark:bg-slate-900">
-          <v-form ref="orderForm" v-model="isOrderFormValid">
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-              
-              <!-- CỘT TRÁI: THÔNG TIN ĐƠN HÀNG -->
-              <div class="col-span-12 md:col-span-7 space-y-4">
-                <h3 class="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <v-icon size="18">mdi-cart-outline</v-icon>
-                  1. Chi tiết sản phẩm & Thanh toán
-                </h3>
-                
-                <v-card variant="flat" class="border border-slate-100 rounded-xl pa-4">
-                  <!-- Chọn khách hàng -->
-                  <v-autocomplete
-                    v-model="newOrder.customerId"
-                    :items="contactsList"
-                    item-title="fullName"
-                    item-value="id"
-                    label="Khách hàng Zalo (CRM Contact)"
-                    placeholder="Tìm theo tên hoặc số điện thoại..."
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Vui lòng chọn khách hàng']"
-                    @update:model-value="onContactSelected"
-                    class="mb-4"
-                  >
-                    <template #item="{ props, item }">
-                      <v-list-item v-bind="props" :title="item.raw.fullName" :subtitle="item.raw.phone || 'Không có SĐT'" />
-                    </template>
-                  </v-autocomplete>
-
-                  <!-- Danh sách sản phẩm -->
-                  <div class="mb-4">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-xs font-bold text-slate-500 uppercase">Sản phẩm (Items)</span>
-                      <v-btn
-                        size="x-small"
-                        color="emerald-600"
-                        variant="outlined"
-                        prepend-icon="mdi-plus"
-                        @click="addOrderItem"
-                        class="font-bold"
-                      >
-                        Thêm SP
-                      </v-btn>
-                    </div>
-
-                    <div v-for="(item, index) in newOrder.items" :key="index" class="flex items-start gap-2 mb-2">
-                      <v-text-field
-                        v-model="item.productName"
-                        placeholder="Tên sản phẩm"
-                        variant="outlined"
-                        color="emerald-600"
-                        density="compact"
-                        hide-details
-                        :rules="[v => !!v || 'Bắt buộc']"
-                        style="flex: 2;"
-                      />
-                      <v-text-field
-                        v-model.number="item.quantity"
-                        type="number"
-                        placeholder="SL"
-                        variant="outlined"
-                        color="emerald-600"
-                        density="compact"
-                        hide-details
-                        :rules="[v => v > 0 || '>0']"
-                        style="width: 70px;"
-                      />
-                      <v-text-field
-                        v-model.number="item.unitPrice"
-                        type="number"
-                        placeholder="Đơn giá"
-                        variant="outlined"
-                        color="emerald-600"
-                        density="compact"
-                        hide-details
-                        style="width: 110px;"
-                      />
-                      <v-btn
-                        icon="mdi-delete-outline"
-                        color="red"
-                        variant="text"
-                        size="small"
-                        class="mt-1"
-                        :disabled="newOrder.items.length === 1"
-                        @click="removeOrderItem(index)"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- Các chi phí -->
-                  <div class="grid grid-cols-2 gap-4 mb-2">
-                    <v-text-field
-                      v-model.number="newOrder.shippingFee"
-                      type="number"
-                      label="Phí ship (VNĐ)"
-                      variant="outlined"
-                      color="emerald-600"
-                      density="compact"
-                    />
-                    <v-text-field
-                      v-model.number="newOrder.discountAmount"
-                      type="number"
-                      label="Giảm giá (VNĐ)"
-                      variant="outlined"
-                      color="emerald-600"
-                      density="compact"
-                    />
-                  </div>
-
-                  <!-- Tạm tính, Tổng cộng, COD -->
-                  <div class="bg-slate-50 dark:bg-[#1D2D50]/30 rounded-xl p-3 space-y-1.5 text-sm">
-                    <div class="flex justify-between text-slate-500">
-                      <span>Tạm tính (hàng hóa):</span>
-                      <span class="font-semibold">{{ formatCurrency(orderSubtotal) }}</span>
-                    </div>
-                    <div class="flex justify-between text-slate-500">
-                      <span>Phí ship:</span>
-                      <span class="font-semibold text-emerald-600">+{{ formatCurrency(newOrder.shippingFee || 0) }}</span>
-                    </div>
-                    <div class="flex justify-between text-slate-500">
-                      <span>Giảm giá:</span>
-                      <span class="font-semibold text-red-500">-{{ formatCurrency(newOrder.discountAmount || 0) }}</span>
-                    </div>
-                    <v-divider class="my-2" />
-                    <div class="flex justify-between text-base font-bold text-slate-800 dark:text-slate-100">
-                      <span>Tổng cộng cần thanh toán:</span>
-                      <span class="text-emerald-600">{{ formatCurrency(orderTotal) }}</span>
-                    </div>
-                  </div>
-
-                  <div class="mt-4">
-                    <v-text-field
-                      v-model.number="newOrder.codAmount"
-                      type="number"
-                      label="Tiền thu hộ COD (VNĐ)"
-                      variant="outlined"
-                      color="emerald-600"
-                      density="comfortable"
-                      placeholder="Mặc định thu bằng tổng tiền"
-                      hint="Nếu thu COD, nhập số tiền cần shipper thu hộ"
-                      persistent-hint
-                    />
-                  </div>
-                </v-card>
-              </div>
-
-              <!-- CỘT PHẢI: THÔNG TIN VẬN CHUYỂN -->
-              <div class="col-span-12 md:col-span-5 space-y-4">
-                <div class="flex items-center justify-between">
-                  <h3 class="text-sm font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <v-icon size="18">mdi-truck-delivery-outline</v-icon>
-                    2. Địa chỉ nhận hàng
-                  </h3>
-                  <v-btn
-                    v-if="selectedContactDetails"
-                    size="x-small"
-                    color="emerald-600"
-                    variant="tonal"
-                    prepend-icon="mdi-content-copy"
-                    @click="copyContactInfo"
-                    class="font-bold text-xs"
-                  >
-                    Lấy thông tin KH
-                  </v-btn>
-                </div>
-
-                <v-card variant="flat" class="border border-slate-100 rounded-xl pa-4 space-y-3">
-                  <v-text-field
-                    v-model="newOrder.shippingAddress.receiverName"
-                    label="Tên người nhận"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Bắt buộc']"
-                  />
-                  <v-text-field
-                    v-model="newOrder.shippingAddress.receiverPhone"
-                    label="Số điện thoại nhận"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Bắt buộc', v => /^[0-9]{9,11}$/.test(v) || 'SĐT không hợp lệ']"
-                  />
-                  <v-text-field
-                    v-model="newOrder.shippingAddress.receiverProvince"
-                    label="Tỉnh / Thành phố"
-                    placeholder="Ví dụ: Hà Nội"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Bắt buộc']"
-                  />
-                  <v-text-field
-                    v-model="newOrder.shippingAddress.receiverDistrict"
-                    label="Quận / Huyện"
-                    placeholder="Ví dụ: Cầu Giấy"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Bắt buộc']"
-                  />
-                  <v-text-field
-                    v-model="newOrder.shippingAddress.receiverWard"
-                    label="Phường / Xã"
-                    placeholder="Ví dụ: Dịch Vọng"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Bắt buộc']"
-                  />
-                  <v-text-field
-                    v-model="newOrder.shippingAddress.receiverAddress"
-                    label="Địa chỉ chi tiết (Số nhà, đường...)"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    :rules="[v => !!v || 'Bắt buộc']"
-                  />
-
-                  <v-textarea
-                    v-model="newOrder.notes"
-                    label="Ghi chú đơn hàng"
-                    variant="outlined"
-                    color="emerald-600"
-                    density="comfortable"
-                    rows="2"
-                    hide-details
-                  />
-                </v-card>
-              </div>
-            </div>
-          </v-form>
-        </v-card-text>
-
-        <v-card-actions class="pa-4 bg-white dark:bg-[#112240] border-t justify-end">
-          <v-btn variant="outlined" color="slate-500" @click="createOrderDialog = false">Hủy</v-btn>
-          <v-btn
-            color="emerald-600"
-            variant="flat"
-            class="text-white font-bold px-6"
-            :loading="submittingOrder"
-            :disabled="!isOrderFormValid"
-            @click="submitCreateOrder"
-          >
-            Tạo đơn hàng
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <!-- Create Order Wizard Component Integration -->
+    <CreateOrderWizard
+      v-model="createOrderDialog"
+      @order-created="fetchOrders"
+      @snack="handleWizardSnack"
+    />
 
     <!-- Dialog: Tạo vận đơn Viettel Post -->
     <v-dialog v-model="createShipmentDialog" max-width="450px">
-      <v-card class="rounded-[20px]">
+      <v-card class="rounded-[20px] border border-slate-200 dark:border-slate-800" :class="isDark ? 'bg-[#112240]' : 'bg-white'">
         <v-card-title class="bg-emerald-600 text-white py-4 px-6 flex items-center justify-between">
           <span class="text-base font-bold">TẠO VẬN ĐƠN VIETTEL POST</span>
           <v-icon color="white" class="cursor-pointer" @click="createShipmentDialog = false">mdi-close</v-icon>
         </v-card-title>
 
         <v-card-text class="pa-6">
-          <div v-if="selectedOrderForShipment" class="space-y-4">
-            <div class="text-sm space-y-1">
-              <div class="flex justify-between text-slate-500">
+          <div v-if="selectedOrderForShipment" class="space-y-4 text-xs">
+            <div class="space-y-1">
+              <div class="flex justify-between text-slate-400">
                 <span>Đơn hàng:</span>
                 <span class="font-bold text-slate-800 dark:text-slate-100">{{ selectedOrderForShipment.orderCode }}</span>
               </div>
-              <div class="flex justify-between text-slate-500">
+              <div class="flex justify-between text-slate-400">
                 <span>Người nhận:</span>
-                <span class="font-bold">{{ getAddressDetails(selectedOrderForShipment.shippingAddressJson).receiverName }}</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100">{{ getAddressDetails(selectedOrderForShipment.shippingAddressJson).receiverName }}</span>
               </div>
-              <div class="flex justify-between text-slate-500">
+              <div class="flex justify-between text-slate-400">
                 <span>Điện thoại:</span>
-                <span class="font-bold">{{ getAddressDetails(selectedOrderForShipment.shippingAddressJson).receiverPhone }}</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100">{{ getAddressDetails(selectedOrderForShipment.shippingAddressJson).receiverPhone }}</span>
               </div>
-              <div class="flex justify-between text-slate-500">
+              <div class="flex justify-between text-slate-400">
                 <span>COD thu hộ:</span>
                 <span class="font-bold text-emerald-600">{{ formatCurrency(selectedOrderForShipment.codAmount) }}</span>
               </div>
             </div>
 
-            <v-divider />
+            <v-divider class="dark:border-slate-800" />
 
             <v-text-field
               v-model.number="shipmentWeight"
@@ -474,19 +373,19 @@
               variant="outlined"
               color="emerald-600"
               density="comfortable"
+              class="rounded-xl"
               hint="Ví dụ: 500 = 0.5kg"
               persistent-hint
-              :rules="[v => v > 0 || 'Trọng lượng phải lớn hơn 0']"
             />
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-4 justify-end">
-          <v-btn variant="outlined" color="slate-500" @click="createShipmentDialog = false">Đóng</v-btn>
+        <v-card-actions class="pa-4 justify-end border-t dark:border-slate-800">
+          <v-btn variant="outlined" color="slate-400" @click="createShipmentDialog = false" class="font-bold text-xs">Đóng</v-btn>
           <v-btn
             color="emerald-600"
             variant="flat"
-            class="text-white font-bold"
+            class="text-white font-bold text-xs"
             :loading="submittingShipment"
             @click="submitCreateShipment"
           >
@@ -498,17 +397,17 @@
 
     <!-- Dialog: Xem chi tiết đơn hàng & trạng thái vận đơn -->
     <v-dialog v-model="orderDetailDialog" max-width="600px">
-      <v-card class="rounded-[20px]" v-if="selectedOrderDetail">
-        <v-card-title class="bg-slate-800 text-white py-4 px-6 flex items-center justify-between">
+      <v-card class="rounded-[20px] border border-slate-200 dark:border-slate-800" v-if="selectedOrderDetail" :class="isDark ? 'bg-[#112240]' : 'bg-white'">
+        <v-card-title class="bg-slate-800 dark:bg-slate-900 text-white py-4 px-6 flex items-center justify-between">
           <span class="text-base font-bold">CHI TIẾT ĐƠN HÀNG {{ selectedOrderDetail.orderCode }}</span>
           <v-icon color="white" class="cursor-pointer" @click="orderDetailDialog = false">mdi-close</v-icon>
         </v-card-title>
 
         <v-card-text class="pa-6">
-          <div class="space-y-4">
+          <div class="space-y-4 text-xs">
             <!-- Order status summary -->
-            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900 rounded-xl p-3">
-              <span class="text-xs font-bold text-slate-500 uppercase">Trạng thái đơn:</span>
+            <div class="flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3">
+              <span class="text-xs font-bold text-slate-400 uppercase">Trạng thái đơn:</span>
               <v-chip :color="orderStatusColor(selectedOrderDetail.status)" size="small" variant="flat" class="font-bold text-white">
                 {{ orderStatusLabel(selectedOrderDetail.status) }}
               </v-chip>
@@ -520,7 +419,7 @@
               <div class="text-sm space-y-1">
                 <div><strong>Khách hàng:</strong> {{ selectedOrderDetail.customer?.fullName }}</div>
                 <div><strong>Số điện thoại:</strong> {{ selectedOrderDetail.customer?.phone || '—' }}</div>
-                <v-divider class="my-2" />
+                <v-divider class="my-2 dark:border-slate-800" />
                 <div v-if="selectedOrderDetail.shippingAddressJson">
                   <strong>Địa chỉ nhận:</strong> 
                   {{ getAddressText(selectedOrderDetail.shippingAddressJson) }}
@@ -531,10 +430,10 @@
             <!-- Products List -->
             <div>
               <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Danh sách sản phẩm</h4>
-              <div class="border rounded-xl overflow-hidden">
-                <table class="w-full text-left border-collapse text-sm">
+              <div class="border dark:border-slate-800 rounded-xl overflow-hidden">
+                <table class="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr class="bg-slate-50 dark:bg-[#1D2D50]/50 border-b">
+                    <tr class="bg-slate-50 dark:bg-slate-900/40 border-b dark:border-slate-800">
                       <th class="p-2.5 font-bold">Sản phẩm</th>
                       <th class="p-2.5 font-bold text-right" style="width: 60px;">SL</th>
                       <th class="p-2.5 font-bold text-right" style="width: 100px;">Đơn giá</th>
@@ -542,7 +441,7 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="item in selectedOrderDetail.items" :key="item.id" class="border-b last:border-b-0">
+                    <tr v-for="item in selectedOrderDetail.items" :key="item.id" class="border-b last:border-b-0 dark:border-slate-800">
                       <td class="p-2.5 font-medium">{{ item.productName }}</td>
                       <td class="p-2.5 text-right">{{ item.quantity }}</td>
                       <td class="p-2.5 text-right">{{ formatCurrency(item.unitPrice) }}</td>
@@ -556,7 +455,7 @@
             <!-- Logistics details -->
             <div v-if="selectedOrderDetail.shipment">
               <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Thông tin vận đơn Viettel Post</h4>
-              <div class="bg-slate-50 dark:bg-slate-900 border rounded-xl p-3.5 space-y-2 text-sm">
+              <div class="bg-slate-50 dark:bg-slate-900/40 border dark:border-slate-800 rounded-xl p-3.5 space-y-2">
                 <div class="flex justify-between">
                   <span>Mã vận đơn (Waybill):</span>
                   <span class="font-mono font-bold text-emerald-600">{{ selectedOrderDetail.shipment.trackingNumber || 'Đang xử lý...' }}</span>
@@ -582,8 +481,8 @@
           </div>
         </v-card-text>
 
-        <v-card-actions class="pa-4 justify-end border-t">
-          <v-btn color="slate-600" variant="flat" class="font-bold text-white" @click="orderDetailDialog = false">Đóng</v-btn>
+        <v-card-actions class="pa-4 justify-end border-t dark:border-slate-800">
+          <v-btn color="slate-600" variant="flat" class="font-bold text-white text-xs" @click="orderDetailDialog = false">Đóng</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -599,12 +498,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useTheme } from 'vuetify';
 import { api } from '@/api';
+import CreateOrderWizard from '@/components/CreateOrderWizard.vue';
 
 const theme = useTheme();
 const isDark = computed(() => theme.global.name.value === 'dark');
+
+// View mode: 'kanban' or 'table'
+const viewMode = ref<'kanban' | 'table'>('kanban');
 
 // State
 const orders = ref<any[]>([]);
@@ -614,8 +517,6 @@ const statusFilter = ref('ALL');
 
 // Dialogs state
 const createOrderDialog = ref(false);
-const isOrderFormValid = ref(false);
-const submittingOrder = ref(false);
 
 const createShipmentDialog = ref(false);
 const submittingShipment = ref(false);
@@ -625,14 +526,17 @@ const shipmentWeight = ref(500);
 const orderDetailDialog = ref(false);
 const selectedOrderDetail = ref<any | null>(null);
 
-// Contacts lists for dropdown selection
-const contactsList = ref<any[]>([]);
-const selectedContactDetails = ref<any | null>(null);
+// Drag and drop state
+const dragOverStatus = ref<string | null>(null);
 
 const snack = ref({ show: false, text: '', color: 'success' });
 
 function showSnack(text: string, color = 'success') {
   snack.value = { show: true, text, color };
+}
+
+function handleWizardSnack(text: string, color?: string) {
+  showSnack(text, color);
 }
 
 // Table Headers
@@ -647,10 +551,18 @@ const headers = [
 
 const statusOptions = [
   { title: 'Tất cả trạng thái', value: 'ALL' },
-  { title: 'Mới tạo (Pending)', value: 'PENDING' },
+  { title: 'Chờ xử lý (Pending)', value: 'PENDING' },
   { title: 'Đang giao (Processing)', value: 'PROCESSING' },
   { title: 'Hoàn thành (Completed)', value: 'COMPLETED' },
   { title: 'Đã hủy (Cancelled)', value: 'CANCELLED' },
+];
+
+// Kanban columns configuration
+const kanbanColumns = [
+  { title: 'Chờ xử lý', status: 'PENDING', dotClass: 'bg-amber-500', dotColor: 'orange' },
+  { title: 'Đang giao', status: 'PROCESSING', dotClass: 'bg-blue-500', dotColor: 'blue' },
+  { title: 'Hoàn thành', status: 'COMPLETED', dotClass: 'bg-emerald-500', dotColor: 'emerald' },
+  { title: 'Đã hủy', status: 'CANCELLED', dotClass: 'bg-red-500', dotColor: 'red' },
 ];
 
 // Stats Computeds
@@ -683,39 +595,68 @@ const filteredOrders = computed(() => {
   });
 });
 
-// New Order model
-const newOrder = reactive({
-  customerId: '',
-  items: [
-    { productName: '', quantity: 1, unitPrice: 0 }
-  ],
-  shippingFee: 30000,
-  discountAmount: 0,
-  codAmount: null as number | null,
-  notes: '',
-  shippingAddress: {
-    receiverName: '',
-    receiverPhone: '',
-    receiverProvince: '',
-    receiverDistrict: '',
-    receiverWard: '',
-    receiverAddress: '',
+// Get orders filtered by column status and search query
+function getOrdersByStatus(status: string) {
+  return filteredOrders.value.filter(o => o.status === status);
+}
+
+// Drag & Drop Handlers
+function onDragStart(order: any, event: DragEvent) {
+  event.dataTransfer?.setData('orderId', order.id);
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move';
   }
-});
+}
 
-// Calculations for New Order
-const orderSubtotal = computed(() => {
-  return newOrder.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-});
+function onDragOver(status: string) {
+  dragOverStatus.value = status;
+}
 
-const orderTotal = computed(() => {
-  return orderSubtotal.value + (newOrder.shippingFee || 0) - (newOrder.discountAmount || 0);
-});
+function onDragLeave() {
+  dragOverStatus.value = null;
+}
+
+async function onDrop(status: string, event: DragEvent) {
+  dragOverStatus.value = null;
+  const orderId = event.dataTransfer?.getData('orderId');
+  if (!orderId) return;
+
+  const order = orders.value.find(o => o.id === orderId);
+  if (!order || order.status === status) return;
+
+  await updateOrderStatus(orderId, status);
+}
+
+// Update order status via backend PATCH API
+async function updateOrderStatus(orderId: string, status: string) {
+  try {
+    await api.patch(`/logistics/orders/${orderId}`, { status });
+    showSnack(`Đã cập nhật trạng thái đơn hàng thành ${orderStatusLabel(status)}`);
+    fetchOrders();
+  } catch (err: any) {
+    console.error('Failed to update order status:', err);
+    showSnack(err.response?.data?.error || 'Không thể cập nhật trạng thái đơn hàng', 'error');
+  }
+}
 
 // Format currency
 function formatCurrency(val: number) {
   if (val === undefined || val === null) return '0 đ';
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(val);
+}
+
+// Time calculations
+function timeAgo(dateStr: string) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return 'Vừa xong';
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  return date.toLocaleDateString('vi-VN');
 }
 
 // Order Status Helpers
@@ -762,6 +703,17 @@ function shipmentStatusColor(status: string) {
   return map[status] ?? 'grey';
 }
 
+function getShipmentStatusTextClass(status: string) {
+  const map: Record<string, string> = {
+    PENDING_WAYBILL: 'text-amber-500',
+    PICKUP_PENDING: 'text-blue-500',
+    SHIPPING: 'text-indigo-500',
+    DELIVERED: 'text-emerald-500',
+    CANCELLED: 'text-red-500',
+  };
+  return map[status] ?? 'text-slate-400';
+}
+
 // Fetch orders data
 async function fetchOrders() {
   loading.value = true;
@@ -773,89 +725,6 @@ async function fetchOrders() {
     showSnack('Không thể tải danh sách đơn hàng', 'error');
   } finally {
     loading.value = false;
-  }
-}
-
-// Fetch contacts for order dialog
-async function fetchContactsForDropdown() {
-  try {
-    const res = await api.get('/contacts', { params: { limit: 100 } });
-    contactsList.value = res.data.contacts ?? res.data ?? [];
-  } catch (err: any) {
-    console.error('Failed to load contacts for dropdown:', err);
-  }
-}
-
-// On select contact in create form
-function onContactSelected(val: string) {
-  const contact = contactsList.value.find(c => c.id === val);
-  selectedContactDetails.value = contact || null;
-}
-
-// Copy CRM contact info into shipment receiver fields
-function copyContactInfo() {
-  if (!selectedContactDetails.value) return;
-  newOrder.shippingAddress.receiverName = selectedContactDetails.value.fullName || '';
-  newOrder.shippingAddress.receiverPhone = selectedContactDetails.value.phone || '';
-  newOrder.shippingAddress.receiverProvince = '';
-  newOrder.shippingAddress.receiverDistrict = '';
-  newOrder.shippingAddress.receiverWard = '';
-  newOrder.shippingAddress.receiverAddress = '';
-  showSnack('Đã sao chép tên và SĐT từ thông tin khách hàng ZaloCRM.');
-}
-
-// Add/Remove Order Items in form
-function addOrderItem() {
-  newOrder.items.push({ productName: '', quantity: 1, unitPrice: 0 });
-}
-
-function removeOrderItem(index: number) {
-  newOrder.items.splice(index, 1);
-}
-
-// Open Dialog: Create Order
-function openCreateOrder() {
-  newOrder.customerId = '';
-  newOrder.items = [{ productName: '', quantity: 1, unitPrice: 0 }];
-  newOrder.shippingFee = 30000;
-  newOrder.discountAmount = 0;
-  newOrder.codAmount = null;
-  newOrder.notes = '';
-  newOrder.shippingAddress = {
-    receiverName: '',
-    receiverPhone: '',
-    receiverProvince: '',
-    receiverDistrict: '',
-    receiverWard: '',
-    receiverAddress: '',
-  };
-  selectedContactDetails.value = null;
-  createOrderDialog.value = true;
-}
-
-// Submit Create Order
-async function submitCreateOrder() {
-  submittingOrder.value = true;
-  try {
-    const payload = {
-      customerId: newOrder.customerId,
-      items: newOrder.items,
-      shippingFee: newOrder.shippingFee,
-      discountAmount: newOrder.discountAmount,
-      codAmount: newOrder.codAmount !== null ? newOrder.codAmount : orderTotal.value,
-      notes: newOrder.notes,
-      shippingAddressJson: JSON.stringify(newOrder.shippingAddress),
-    };
-
-    await api.post('/logistics/orders', payload);
-    showSnack('Tạo đơn hàng thành công!');
-    createOrderDialog.value = false;
-    fetchOrders();
-  } catch (err: any) {
-    console.error('Failed to create order:', err);
-    showSnack(err.response?.data?.error || 'Tạo đơn hàng thất bại', 'error');
-  } finally {
-    submittingOrder.value = false;
   }
 }
 
@@ -900,12 +769,9 @@ async function submitCreateShipment() {
 async function retryShipment(order: any) {
   if (!order.shipment) return;
   
-  // Show notification starting
   showSnack('Đang gửi lại yêu cầu tạo vận đơn đến Viettel Post...', 'info');
   
   try {
-    // API creation logic for existing orders is triggered via /logistics/shipments
-    // If we call it again, it expects weight. We use shipment weight or fallback
     const res = await api.post('/logistics/shipments', {
       orderId: order.id,
       weightGrams: order.shipment.weightGrams || 500,
@@ -953,7 +819,6 @@ function viewOrderDetails(order: any) {
 
 onMounted(() => {
   fetchOrders();
-  fetchContactsForDropdown();
 });
 </script>
 

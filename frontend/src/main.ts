@@ -13,3 +13,4 @@ app.use(vuetify);
 router.isReady().then(() => {
   app.mount('#app');
 });
+

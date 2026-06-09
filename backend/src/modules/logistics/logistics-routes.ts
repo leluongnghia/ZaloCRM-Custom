@@ -173,6 +173,41 @@ export async function logisticsRoutes(app: FastifyInstance): Promise<void> {
       }
     });
 
+    authApp.patch('/api/v1/logistics/orders/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { orgId } = request.user!;
+        const { id } = request.params as { id: string };
+        const body = request.body as { status: string };
+
+        if (!body.status) {
+          return reply.status(400).send({ error: 'status is required' });
+        }
+
+        const validStatuses = ['PENDING', 'PROCESSING', 'COMPLETED', 'CANCELLED'];
+        if (!validStatuses.includes(body.status)) {
+          return reply.status(400).send({ error: 'Invalid status' });
+        }
+
+        const order = await prisma.order.findFirst({
+          where: { id, orgId }
+        });
+
+        if (!order) {
+          return reply.status(404).send({ error: 'Order not found' });
+        }
+
+        const updatedOrder = await prisma.order.update({
+          where: { id },
+          data: { status: body.status }
+        });
+
+        return updatedOrder;
+      } catch (err: any) {
+        logger.error('[logistics-api] PATCH /orders/:id error:', err);
+        return reply.status(500).send({ error: 'Failed to update order status' });
+      }
+    });
+
     // ── Shipments (Logistics) ─────────────────────────────────────────────────
 
     authApp.post('/api/v1/logistics/shipments', async (request: FastifyRequest, reply: FastifyReply) => {
